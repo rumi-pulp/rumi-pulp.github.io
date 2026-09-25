@@ -1,0 +1,1625 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>rumi-pulp blog</title>
+    <meta
+      name="description"
+      content="rumi-pulp — blog by Aiman, a creative writer based in Kuala Lumpur."
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              ui: {
+                bg: "rgb(var(--ui-bg) / <alpha-value>)",
+                card: "rgb(var(--ui-card) / <alpha-value>)",
+                surface: "rgb(var(--ui-surface) / <alpha-value>)",
+                border: "rgb(var(--ui-border) / <alpha-value>)",
+                "border-alt": "rgb(var(--ui-border-alt) / <alpha-value>)",
+                muted: "rgb(var(--ui-muted) / <alpha-value>)",
+                secondary: "rgb(var(--ui-secondary) / <alpha-value>)",
+                primary: "rgb(var(--ui-primary) / <alpha-value>)",
+                heading: "rgb(var(--ui-heading) / <alpha-value>)",
+              },
+            },
+            borderRadius: {
+              ui: "32px",
+              "ui-xs": "16px",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      :root {
+        --ui-bg: 244 245 246;
+        --ui-card: 255 255 255;
+        --ui-surface: 238 240 241;
+        --ui-border: 216 219 222;
+        --ui-border-alt: 217 219 222;
+        --ui-muted: 138 148 158;
+        --ui-secondary: 107 118 128;
+        --ui-primary: 31 31 31;
+        --ui-heading: 31 31 31;
+      }
+      .dark {
+        --ui-bg: 9 9 9;
+        --ui-card: 20 20 20;
+        --ui-surface: 36 36 36;
+        --ui-border: 36 36 36;
+        --ui-border-alt: 51 51 51;
+        --ui-muted: 102 102 102;
+        --ui-secondary: 172 172 172;
+        --ui-primary: 204 204 204;
+        --ui-heading: 255 255 255;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "SF Pro Text", "Helvetica Neue", sans-serif;
+      }
+
+      .bg-pattern {
+        position: absolute;
+        inset: 0;
+        background-image: url("https://framerusercontent.com/images/rR6HYXBrMmX4cRpXfXUOvpvpB0.png");
+        background-size: 64px;
+        background-repeat: repeat;
+        opacity: 0.08;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .border-deco {
+        position: absolute;
+        inset: 16px;
+        border: 2px solid rgb(var(--ui-border));
+        border-radius: 40px;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      @media (max-width: 809.98px) {
+        .border-deco {
+          inset: 8px;
+          border-radius: 32px;
+        }
+      }
+
+      .cursor-blink {
+        animation: blink 1s step-end infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      .appear {
+        animation: fadeInUp 0.4s cubic-bezier(0.27, 0, 0.51, 1) forwards;
+      }
+      @keyframes fadeInUp {
+        from {
+          opacity: 0.001;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .social-btn {
+        transition:
+          transform 0.2s ease,
+          color 0.2s ease,
+          border-color 0.2s ease,
+          opacity 0.2s ease;
+      }
+      .social-btn:not(:disabled):hover {
+        transform: translateY(-2px);
+      }
+
+      .tech-icon {
+        transition: border-color 0.2s ease;
+      }
+      .tech-icon:hover {
+        border-color: rgb(var(--ui-secondary));
+      }
+
+      /* Infinite logo marquee (Stack I use) */
+      .marquee {
+        --gap: 16px;
+        display: flex;
+        overflow: hidden;
+        user-select: none;
+        gap: var(--gap);
+        -webkit-mask-image: linear-gradient(
+          90deg,
+          transparent,
+          #000 12%,
+          #000 88%,
+          transparent
+        );
+        mask-image: linear-gradient(
+          90deg,
+          transparent,
+          #000 12%,
+          #000 88%,
+          transparent
+        );
+      }
+      .marquee__content {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        min-width: 100%;
+        gap: var(--gap);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        animation: marquee-scroll 35s linear infinite;
+      }
+      .marquee:hover .marquee__content {
+        animation-play-state: paused;
+      }
+      @keyframes marquee-scroll {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(calc(-100% - var(--gap)));
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .marquee__content {
+          animation: none;
+        }
+        .marquee__content[aria-hidden="true"] {
+          display: none;
+        }
+      }
+
+      /* Domino clock (Now tile): flat dominoes, pips = digit */
+      .domino-clock {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.55em;
+        font-size: 10px;
+        line-height: 1;
+      }
+      .domino-clock .domino {
+        display: flex;
+        flex-direction: column;
+        padding: 0.6em;
+        background: rgb(var(--ui-surface));
+        border: 1px solid rgb(var(--ui-border));
+        border-radius: 12px;
+      }
+      .domino-clock .part {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.55em;
+      }
+      .domino-clock .part-top {
+        padding-bottom: 0.55em;
+      }
+      .domino-clock .part-bottom {
+        padding-top: 0.55em;
+        border-top: 1px solid rgb(var(--ui-border));
+      }
+      .domino-clock .part span {
+        width: 1em;
+        height: 1em;
+        border-radius: 50%;
+        background: rgb(var(--ui-border));
+        transition: background 0.25s ease;
+      }
+      .domino-clock .part span.active {
+        background: rgb(var(--ui-heading));
+      }
+      .domino-clock .colon {
+        font-size: 2em;
+        font-weight: 600;
+        color: rgb(var(--ui-muted));
+      }
+      .domino-clock .ampm {
+        font-size: 1em;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        color: rgb(var(--ui-muted));
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .domino-clock .part span {
+          transition: none;
+        }
+      }
+      @media (max-width: 809px) {
+        .domino-clock {
+          font-size: 8px;
+        }
+      }
+
+      .touch-btn {
+        transition:
+          background 0.2s ease,
+          transform 0.2s ease;
+      }
+      .touch-btn:hover {
+        background: rgb(var(--ui-border-alt));
+        transform: translateY(-1px);
+      }
+
+      /* Keyboard focus: the incumbent had no visible ring; add the documented one */
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid rgb(var(--ui-secondary));
+        outline-offset: 2px;
+      }
+
+      ::selection {
+        background: rgb(var(--ui-surface));
+        color: rgb(var(--ui-heading));
+      }
+
+      /* Curved SVG scrollbar (About modal): drawn inside the panel's border-radius */
+      .scroll-container {
+        --thumb-color: rgb(var(--ui-secondary));
+        --thumb-color-active: rgb(var(--ui-heading));
+        --thumb-width: 4;
+        --thumb-width-active: 6;
+        --track-color: transparent;
+        --track-color-active: rgb(var(--ui-border) / 0.6);
+        --track-width: 4;
+        --track-width-active: 6;
+        position: relative;
+        overflow: hidden;
+      }
+      .scroll-content {
+        max-height: 85vh;
+        overflow-y: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+      .scroll-content::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+      .scrollbar-svg:has(:active) {
+        --thumb-width: var(--thumb-width-active);
+        --track-width: var(--track-width-active);
+        --track-color: var(--track-color-active);
+      }
+      .scrollbar-track {
+        fill: none;
+        stroke: var(--track-color);
+        stroke-width: var(--track-width);
+        stroke-linecap: round;
+        transition:
+          stroke-width 150ms ease-in-out,
+          stroke 150ms ease-in-out;
+      }
+      .scrollbar-thumb {
+        fill: none;
+        stroke: var(--thumb-color);
+        stroke-width: var(--thumb-width);
+        stroke-linecap: round;
+        pointer-events: auto;
+        cursor: grab;
+        transition:
+          stroke-width 150ms ease-in-out,
+          stroke 150ms ease-in-out;
+      }
+      .scrollbar-thumb:active {
+        stroke: var(--thumb-color-active);
+        cursor: grabbing;
+      }
+      /* Stack icons: black in light mode, gray in dark mode */
+      .stack-bw {
+        filter: brightness(0);
+      }
+      .dark .stack-bw {
+        filter: brightness(0) invert(0.7);
+      }
+    </style>
+  </head>
+  <body class="bg-ui-bg text-ui-primary">
+    <div class="relative min-h-screen">
+      <!-- Background Pattern -->
+      <div class="bg-pattern"></div>
+      <!-- Border Decoration -->
+      <div class="border-deco hidden lg:block"></div>
+
+      <!-- ================= Bento grid ================= -->
+      <main
+        class="appear relative z-10 max-w-[1440px] mx-auto w-full p-8 min-h-[860px] max-[1199px]:min-h-0 max-[809px]:px-5 max-[809px]:py-5"
+      >
+        <div
+          class="grid grid-cols-1 min-[810px]:grid-cols-2 xl:grid-cols-6 gap-4 max-[809px]:gap-3 xl:auto-rows-[minmax(150px,1fr)]"
+        >
+          <!-- Hero tile: the writing + the person (dominant) -->
+          <section
+            aria-labelledby="hero-title"
+            class="flex flex-col gap-6 bg-ui-card border border-ui-border rounded-ui p-8 max-[809px]:p-6 min-h-0 min-w-0 min-[810px]:col-span-2 xl:col-span-4 xl:row-span-2"
+          >
+            <div
+              class="flex flex-col min-[810px]:flex-row gap-6 min-[810px]:gap-8 flex-1 min-h-0"
+            >
+              <!-- The person -->
+              <div
+                class="flex-shrink-0 flex items-center justify-center min-[810px]:justify-start"
+              >
+                <img
+                  src="assets/rumi.webp"
+                  alt="Portrait of Aiman, a creative writer based in Kuala Lumpur"
+                  class="object-contain w-full max-w-[280px] min-[810px]:w-[200px] lg:w-[248px]"
+                />
+              </div>
+
+              <!-- The writing -->
+              <div class="flex flex-col gap-5 flex-1 min-w-0 justify-center">
+                <h1
+                  id="hero-title"
+                  class="text-[32px] min-[810px]:text-[34px] font-medium tracking-[-0.4px] leading-[1.2] text-ui-heading"
+                >
+                  Hi, I'm Aiman <span class="cursor-blink">_</span>
+                </h1>
+
+                <p
+                  class="text-[18px] min-[810px]:text-[22px] font-normal tracking-[-0.4px] leading-[1.4] text-ui-primary max-w-[44ch]"
+                >
+                  Creative Writer, based in Kuala Lumpur.
+                </p>
+
+                <figure class="border-l border-ui-border pl-4 max-w-[52ch]">
+                  <blockquote
+                    class="text-[18px] min-[810px]:text-[22px] font-normal leading-[1.5] text-ui-secondary"
+                  >
+                    "resah yang bahagia, duka yang indah"
+                  </blockquote>
+                  <figcaption
+                    class="mt-2 text-[13px] leading-[1.5] text-ui-muted"
+                  >
+                    A. Samad Said — a happy restlessness, a beautiful sorrow.
+                    The line I keep coming back to.
+                  </figcaption>
+                </figure>
+              </div>
+            </div>
+          </section>
+
+          <!-- About tile: teaser + pop-out trigger -->
+          <article
+            class="flex flex-col gap-3 justify-between min-h-[150px] bg-ui-card border border-ui-border rounded-ui p-5 min-w-0 xl:col-span-2"
+          >
+            <span
+              class="text-[13px] font-semibold tracking-[0.06em] uppercase text-ui-muted"
+              >About</span
+            >
+            <p class="text-[16px] font-normal leading-[1.5] text-ui-primary">
+              Passionate about writing and enjoy problem-solving.
+            </p>
+            <button
+              type="button"
+              onclick="openAbout()"
+              class="touch-btn self-start inline-flex items-center gap-2.5 px-5 py-2.5 rounded-ui-xs bg-ui-surface text-[14px] font-medium text-ui-primary cursor-pointer"
+            >
+              Read about
+            </button>
+          </article>
+
+          <!-- Now: status, weather, domino clock -->
+          <article
+            class="flex flex-col gap-3 justify-start min-h-[150px] bg-ui-card border border-ui-border rounded-ui p-5 min-w-0 xl:col-span-2"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <span
+                class="text-[13px] font-semibold tracking-[0.06em] uppercase text-ui-muted"
+                >Now</span
+              >
+              <button
+                type="button"
+                onclick="toggleTheme()"
+                aria-label="Toggle color theme"
+                class="flex-none w-9 h-9 rounded-ui-xs bg-ui-surface text-ui-primary flex items-center justify-center hover:bg-ui-border-alt transition-colors cursor-pointer"
+              >
+                <svg
+                  id="icon-moon"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+                <svg
+                  id="icon-sun"
+                  class="hidden"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="4" />
+                  <path
+                    d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32 1.41-1.41"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="flex items-center gap-2">
+                <span class="relative flex w-2.5 h-2.5">
+                  <span
+                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                  ></span>
+                  <span
+                    class="relative inline-flex rounded-full w-2.5 h-2.5 bg-emerald-500"
+                  ></span>
+                </span>
+                <span class="text-[13px] text-ui-primary">Online</span>
+              </span>
+              <a
+                href="https://www.accuweather.com/en/my/kuala-lumpur/233776/weather-forecast/233776"
+                target="_blank"
+                rel="noopener"
+                class="flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5 group"
+              >
+                <span
+                  id="weather-temp"
+                  aria-live="polite"
+                  class="text-[22px] font-semibold text-ui-heading group-hover:text-ui-secondary transition-colors"
+                  >Loading…</span
+                >
+                <span id="weather-sub" class="text-[13px] text-ui-muted"
+                  >Kuala Lumpur</span
+                >
+              </a>
+            </div>
+            <div
+              class="mt-auto border-t border-ui-border pt-3 flex flex-col items-center gap-2"
+            >
+              <div class="domino-clock" aria-hidden="true">
+                <div class="domino">
+                  <div class="part part-top"></div>
+                  <div class="part part-bottom"></div>
+                </div>
+                <div class="colon">:</div>
+                <div class="domino">
+                  <div class="part part-top"></div>
+                  <div class="part part-bottom"></div>
+                </div>
+                <div class="domino">
+                  <div class="part part-top"></div>
+                  <div class="part part-bottom"></div>
+                </div>
+                <div class="colon">:</div>
+                <div class="domino">
+                  <div class="part part-top"></div>
+                  <div class="part part-bottom"></div>
+                </div>
+                <div class="domino">
+                  <div class="part part-top"></div>
+                  <div class="part part-bottom"></div>
+                </div>
+                <div class="ampm">AM</div>
+              </div>
+              <time
+                id="domino-clock-time"
+                class="text-[12px] tracking-[0.06em] text-ui-muted tabular-nums"
+                >0:00:00 AM</time
+              >
+            </div>
+          </article>
+
+          <!-- Now playing (real Spotify embed in a flat player frame) -->
+          <article
+            class="flex flex-col gap-3 justify-start min-h-[150px] bg-ui-card border border-ui-border rounded-ui p-5 min-w-0 xl:col-span-2"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <span
+                class="text-[13px] font-semibold tracking-[0.06em] uppercase text-ui-muted"
+                >Now playing</span
+              >
+              <a
+                href="https://open.spotify.com/playlist/38u7cDibJ7b9sVd3iIWgdu"
+                target="_blank"
+                rel="noopener"
+                class="text-[12px] text-ui-muted hover:text-ui-heading transition-colors"
+                >Open on Spotify</a
+              >
+            </div>
+            <div
+              class="flex-1 flex rounded-ui-xs bg-ui-surface border border-ui-border p-2"
+            >
+              <iframe
+                id="spotify-embed"
+                title="Spotify playlist"
+                data-src="https://open.spotify.com/embed/playlist/38u7cDibJ7b9sVd3iIWgdu?utm_source=generator&si=cd14842eaf5941ae"
+                src="https://open.spotify.com/embed/playlist/38u7cDibJ7b9sVd3iIWgdu?utm_source=generator&si=cd14842eaf5941ae&theme=0"
+                class="block w-full flex-1 min-h-[152px] rounded-ui-xs border-0"
+                allow="
+                  autoplay;
+                  clipboard-write;
+                  encrypted-media;
+                  fullscreen;
+                  picture-in-picture;
+                "
+                loading="lazy"
+              ></iframe>
+            </div>
+          </article>
+
+          <!-- Selected work (honest empty state) -->
+          <article
+            class="flex flex-col gap-3 justify-start min-h-[150px] bg-ui-card border border-ui-border rounded-ui p-5 min-w-0 min-[810px]:col-span-2 xl:col-span-4"
+          >
+            <span
+              class="text-[13px] font-semibold tracking-[0.06em] uppercase text-ui-muted"
+              >Selected work</span
+            >
+            <div
+              class="flex-1 flex flex-col items-center justify-center text-center gap-3 py-2"
+            >
+              <span
+                class="flex w-11 h-11 items-center justify-center rounded-ui-xs bg-ui-surface border border-ui-border text-ui-muted"
+                aria-hidden="true"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M12 20h9" />
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                </svg>
+              </span>
+              <div class="flex flex-col gap-1.5 items-center">
+                <span class="text-[16px] font-semibold text-ui-heading"
+                  >Nothing published yet</span
+                >
+                <span
+                  class="text-[13px] leading-[1.5] text-ui-muted max-w-[44ch]"
+                  >Work and resources will land here. No placeholders dressed as
+                  pieces.</span
+                >
+              </div>
+            </div>
+          </article>
+
+          <!-- Hardware I use -->
+          <article
+            class="flex flex-col gap-3 justify-start min-h-[150px] bg-ui-card border border-ui-border rounded-ui p-5 min-w-0 xl:col-span-2"
+          >
+            <span
+              class="text-[13px] font-semibold tracking-[0.06em] uppercase text-ui-muted"
+              >Hardware</span
+            >
+            <div class="flex-1 flex items-center">
+              <div class="grid grid-cols-3 gap-3 w-full">
+                <div class="flex flex-col items-center gap-2">
+                  <span
+                    class="flex w-11 h-11 items-center justify-center rounded-ui-xs bg-ui-surface border border-ui-border text-ui-primary"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <path d="M8 21h8" />
+                      <path d="M12 17v4" />
+                    </svg>
+                  </span>
+                  <span
+                    class="text-[12px] leading-tight text-center text-ui-muted"
+                    >PC</span
+                  >
+                </div>
+                <div class="flex flex-col items-center gap-2">
+                  <span
+                    class="flex w-11 h-11 items-center justify-center rounded-ui-xs bg-ui-surface border border-ui-border text-ui-primary"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                      <path d="M12 18h.01" />
+                    </svg>
+                  </span>
+                  <span
+                    class="text-[12px] leading-tight text-center text-ui-muted"
+                    >iPhone 16 Pro</span
+                  >
+                </div>
+                <div class="flex flex-col items-center gap-2">
+                  <span
+                    class="flex w-11 h-11 items-center justify-center rounded-ui-xs bg-ui-surface border border-ui-border text-ui-primary"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <circle cx="12" cy="12" r="6" />
+                      <path
+                        d="m16.13 7.66-.81-4.05a2 2 0 0 0-1.97-1.61h-2.7a2 2 0 0 0-1.97 1.61l-.81 4.05"
+                      />
+                      <path
+                        d="m7.88 16.36.8 4a2 2 0 0 0 1.98 1.64h2.67a2 2 0 0 0 1.98-1.64l.81-4.05"
+                      />
+                    </svg>
+                  </span>
+                  <span
+                    class="text-[12px] leading-tight text-center text-ui-muted"
+                    >Apple Watch 11</span
+                  >
+                </div>
+                <div class="flex flex-col items-center gap-2">
+                  <span
+                    class="flex w-11 h-11 items-center justify-center rounded-ui-xs bg-ui-surface border border-ui-border text-ui-primary"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"
+                      />
+                    </svg>
+                  </span>
+                  <span
+                    class="text-[12px] leading-tight text-center text-ui-muted"
+                    >AirPods Pro 2</span
+                  >
+                </div>
+                <div class="flex flex-col items-center gap-2">
+                  <span
+                    class="flex w-11 h-11 items-center justify-center rounded-ui-xs bg-ui-surface border border-ui-border text-ui-primary"
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"
+                      />
+                      <circle cx="12" cy="13" r="3" />
+                    </svg>
+                  </span>
+                  <span
+                    class="text-[12px] leading-tight text-center text-ui-muted"
+                    >Fujifilm X-M5</span
+                  >
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <!-- Stack I use -->
+          <article
+            class="flex flex-col gap-3 justify-start min-h-[150px] bg-ui-card border border-ui-border rounded-ui p-5 min-w-0 xl:col-span-2"
+          >
+            <span
+              class="text-[13px] font-semibold tracking-[0.06em] uppercase text-ui-muted"
+              >Stack</span
+            >
+            <div class="flex-1 flex items-center">
+              <div class="marquee" role="group" aria-label="Tools Aiman uses">
+                <ul class="marquee__content">
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/microsoftword.svg"
+                        alt="Word"
+                        class="w-[60%] h-[60%] object-contain stack-bw"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/canva.svg"
+                        alt="Canva"
+                        class="w-[60%] h-[60%] object-contain stack-bw"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/procreate.png"
+                        alt="Procreate"
+                        class="w-[60%] h-[60%] object-contain"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/openai.svg"
+                        alt="ChatGPT"
+                        class="w-[60%] h-[60%] object-contain stack-bw"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/adobelightroom.svg"
+                        alt="Lightroom"
+                        class="w-[60%] h-[60%] object-contain stack-bw"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/capcut-icon.svg"
+                        alt="CapCut"
+                        class="w-[60%] h-[60%] object-contain"
+                      />
+                    </span>
+                  </li>
+                </ul>
+                <ul class="marquee__content" aria-hidden="true">
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/microsoftword.svg"
+                        alt=""
+                        class="w-[60%] h-[60%] object-contain stack-bw"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/canva.svg"
+                        alt=""
+                        class="w-[60%] h-[60%] object-contain stack-bw"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/procreate.png"
+                        alt=""
+                        class="w-[60%] h-[60%] object-contain"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/openai.svg"
+                        alt=""
+                        class="w-[60%] h-[60%] object-contain stack-bw"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/adobelightroom.svg"
+                        alt=""
+                        class="w-[60%] h-[60%] object-contain stack-bw"
+                      />
+                    </span>
+                  </li>
+                  <li>
+                    <span
+                      class="tech-icon w-11 h-11 rounded-ui-xs border-2 border-ui-border-alt bg-ui-surface flex items-center justify-center overflow-hidden"
+                    >
+                      <img
+                        src="assets/capcut-icon.svg"
+                        alt=""
+                        class="w-[60%] h-[60%] object-contain"
+                      />
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </article>
+
+          <!-- Contact + socials (placeholder-honest) -->
+          <article
+            class="flex flex-col gap-3 justify-between min-h-[150px] bg-ui-card border border-ui-border rounded-ui p-5 min-w-0 min-[810px]:col-span-2 xl:col-span-2"
+          >
+            <div class="flex flex-col gap-1.5">
+              <span
+                class="text-[13px] font-semibold tracking-[0.06em] uppercase text-ui-muted"
+                >Contact</span
+              >
+              <span class="text-[16px] font-semibold text-ui-heading"
+                >Have a project in mind?</span
+              >
+              <span class="text-[13px] leading-[1.5] text-ui-muted"
+                >Email below is a placeholder — the owner swaps it for the real
+                address.</span
+              >
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <button
+                type="button"
+                onclick="copyEmail()"
+                id="copy-email-btn"
+                class="touch-btn self-start px-7 py-3 rounded-ui-xs bg-ui-surface text-[16px] font-medium text-ui-primary cursor-pointer"
+              >
+                Copy placeholder email
+              </button>
+
+              <p
+                id="copy-email-status"
+                role="status"
+                aria-live="polite"
+                class="text-[12px] leading-[1.5] text-ui-muted min-h-[16px]"
+              ></p>
+
+              <div class="flex flex-wrap gap-2">
+                <a
+                  href="https://github.com/rumi-pulp/"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="GitHub profile"
+                  class="social-btn w-9 h-9 rounded-ui-xs bg-ui-surface border border-ui-border flex items-center justify-center text-ui-secondary hover:text-ui-heading hover:border-ui-border-alt"
+                >
+                  <img
+                    src="assets/github.svg"
+                    alt=""
+                    aria-hidden="true"
+                    class="w-[16px] h-[16px] object-contain dark:invert"
+                  />
+                </a>
+                <a
+                  href="https://medium.com/@rumi-pulp"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="Medium profile"
+                  class="social-btn w-9 h-9 rounded-ui-xs bg-ui-surface border border-ui-border flex items-center justify-center text-ui-secondary hover:text-ui-heading hover:border-ui-border-alt"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M21.976 6.836a3.6 3.6 0 0 0-.36-1.13 3.1 3.1 0 0 1-.94-1.35 2.17 2.17 0 0 0-2.05-1.24c-.7.03-1.35.3-1.86.76a3.5 3.5 0 0 1-1.3.73 3.2 3.2 0 0 0-1.33 1.2 3.3 3.3 0 0 0-1.34-1.2 3.5 3.5 0 0 1-1.3-.73 2.9 2.9 0 0 0-3.91.48 3.1 3.1 0 0 1-.94 1.35 3.6 3.6 0 0 0-.36 1.13c-.5 2.28-.36 4.66.4 6.86.2.55.58 1.02 1.08 1.32.5.3 1.08.42 1.66.35a2.6 2.6 0 0 0 1.56-.9c.4-.45.68-1 .83-1.58.34-1.35.9-2.9 2.28-2.9s1.94 1.55 2.28 2.9c.15.58.43 1.13.83 1.58.4.45.94.77 1.56.9.58.07 1.16-.05 1.66-.35.5-.3.88-.77 1.08-1.32a12.46 12.46 0 0 0 .4-6.86z"
+                    />
+                  </svg>
+                </a>
+                <button
+                  type="button"
+                  onclick="openNotFound('X')"
+                  aria-label="X profile — not linked"
+                  class="social-btn w-9 h-9 rounded-ui-xs bg-ui-surface border border-ui-border flex items-center justify-center text-ui-muted hover:text-ui-heading"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onclick="openNotFound('Instagram')"
+                  aria-label="Instagram profile — not linked"
+                  class="social-btn w-9 h-9 rounded-ui-xs bg-ui-surface border border-ui-border flex items-center justify-center text-ui-muted hover:text-ui-heading"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onclick="openNotFound('LinkedIn')"
+                  aria-label="LinkedIn profile — not linked"
+                  class="social-btn w-9 h-9 rounded-ui-xs bg-ui-surface border border-ui-border flex items-center justify-center text-ui-muted hover:text-ui-heading"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </main>
+
+      <!-- About pop-out -->
+      <div
+        id="about-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="about-modal-title"
+        class="fixed inset-0 z-[100] hidden items-center justify-center p-4 sm:p-6"
+      >
+        <div
+          class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onclick="closeAbout()"
+        ></div>
+        <div
+          class="scroll-container relative bg-ui-card border border-ui-border rounded-ui w-full max-w-[720px] max-h-[85vh] overflow-hidden"
+          data-scrollbar
+        >
+          <div class="scroll-content p-8 flex flex-col gap-8">
+            <div class="flex items-start justify-between gap-4">
+              <h2
+                id="about-modal-title"
+                class="text-[24px] font-medium tracking-[-0.4px] leading-[1.3] text-ui-heading"
+              >
+                About
+              </h2>
+              <button
+                type="button"
+                onclick="closeAbout()"
+                aria-label="Close"
+                class="flex-none w-9 h-9 rounded-ui-xs bg-ui-surface text-ui-secondary flex items-center justify-center hover:text-ui-heading transition-colors cursor-pointer"
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  aria-hidden="true"
+                >
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="flex flex-col gap-3 max-w-[68ch]">
+              <p class="text-[16px] font-normal leading-[1.6] text-ui-primary">
+                My name is Aiman, and I write.
+              </p>
+              <p class="text-[16px] font-normal leading-[1.6] text-ui-primary">
+                I have always been drawn to Rumi, the poet. His Laila and Majnun
+                have stayed with me, especially the idea that love can make a
+                person lose himself only to discover something deeper.
+              </p>
+              <p class="text-[16px] font-normal leading-[1.6] text-ui-primary">
+                Then there is Pulp, a completely different kind of love. Their
+                songs speak of ordinary people, awkward desires, loneliness, and
+                the strange beauty hidden inside everyday life.
+              </p>
+              <p class="text-[16px] font-normal leading-[1.6] text-ui-primary">
+                Somewhere between Rumi's poetry and Pulp's modern melancholy, I
+                found my own little identity.
+              </p>
+              <p class="text-[16px] font-normal leading-[1.6] text-ui-primary">
+                So when people ask why I call myself Rumi-Pulp, the answer is
+                simple:
+              </p>
+              <p class="text-[16px] font-normal leading-[1.6] text-ui-primary">
+                Rumi gave me the poetry. Pulp gave me the soundtrack. I'm
+                somewhere in between.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3 max-w-[68ch]">
+              <h3 class="text-[16px] font-semibold text-ui-heading">
+                What I do now
+              </h3>
+              <p class="text-[16px] font-normal leading-[1.6] text-ui-primary">
+                Today I'm a Creative Writer, turning ideas into words that build
+                brands and connect with people.
+              </p>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <h3 class="text-[16px] font-semibold text-ui-heading">
+                Experience
+              </h3>
+              <ul class="flex flex-col gap-3">
+                <li class="flex flex-col">
+                  <span class="text-[16px] font-semibold text-ui-heading"
+                    >Content Creator</span
+                  >
+                  <span class="text-[13px] text-ui-muted">Current</span>
+                </li>
+                <li class="flex flex-col">
+                  <span class="text-[16px] font-semibold text-ui-heading"
+                    >Content Writer at CendoolDurian</span
+                  >
+                  <span class="text-[13px] text-ui-muted">2022 - 2025</span>
+                </li>
+                <li class="flex flex-col">
+                  <span class="text-[16px] font-semibold text-ui-heading"
+                    >Content Writer Intern at Dulce Media</span
+                  >
+                  <span class="text-[13px] text-ui-muted">2021 - 2022</span>
+                </li>
+                <li class="flex flex-col">
+                  <span class="text-[16px] font-semibold text-ui-heading"
+                    >Videographer at Ikat Tepi TV</span
+                  >
+                  <span class="text-[13px] text-ui-muted">2020</span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="flex flex-col gap-3">
+              <h3 class="text-[16px] font-semibold text-ui-heading">
+                What I do best
+              </h3>
+              <div class="grid grid-cols-2 gap-3 max-[809px]:grid-cols-1">
+                <div
+                  class="bg-ui-surface border border-ui-border rounded-ui p-5 flex flex-col gap-1.5"
+                >
+                  <span class="text-[16px] font-semibold text-ui-heading"
+                    >Creative Writing</span
+                  >
+                  <span class="text-[13px] text-ui-muted leading-[1.5]"
+                    >Crafting original content that informs and inspires.</span
+                  >
+                </div>
+                <div
+                  class="bg-ui-surface border border-ui-border rounded-ui p-5 flex flex-col gap-1.5"
+                >
+                  <span class="text-[16px] font-semibold text-ui-heading"
+                    >Storytelling</span
+                  >
+                  <span class="text-[13px] text-ui-muted leading-[1.5]"
+                    >Turning ideas into narratives people remember.</span
+                  >
+                </div>
+                <div
+                  class="bg-ui-surface border border-ui-border rounded-ui p-5 flex flex-col gap-1.5"
+                >
+                  <span class="text-[16px] font-semibold text-ui-heading"
+                    >Editing</span
+                  >
+                  <span class="text-[13px] text-ui-muted leading-[1.5]"
+                    >Polishing drafts to be clear, concise, and
+                    compelling.</span
+                  >
+                </div>
+                <div
+                  class="bg-ui-surface border border-ui-border rounded-ui p-5 flex flex-col gap-1.5"
+                >
+                  <span class="text-[16px] font-semibold text-ui-heading"
+                    >Content Creator</span
+                  >
+                  <span class="text-[13px] text-ui-muted leading-[1.5]"
+                    >Creating engaging content across platforms that connects
+                    and grows audiences.</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 404 popover for unlinked social icons -->
+      <div
+        id="notfound-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="notfound-title"
+        class="fixed inset-0 z-[100] hidden items-center justify-center p-4 sm:p-6"
+      >
+        <div
+          class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onclick="closeNotFound()"
+        ></div>
+        <div
+          class="relative bg-ui-card border border-ui-border rounded-ui w-full max-w-[440px] p-8 flex flex-col items-center gap-5 text-center"
+        >
+          <span
+            class="text-[13px] font-semibold tracking-[0.06em] uppercase text-ui-muted"
+            >Not found</span
+          >
+          <p
+            id="notfound-title"
+            class="text-[22px] min-[810px]:text-[26px] font-medium tracking-[-0.4px] leading-[1.3] text-ui-heading min-h-[1.4em]"
+          >
+            <span id="notfound-text"></span><span class="cursor-blink">_</span>
+          </p>
+          <span
+            id="notfound-sub"
+            class="text-[14px] leading-[1.5] text-ui-muted"
+            >This profile isn't linked yet.</span
+          >
+          <button
+            type="button"
+            onclick="replayNotFound()"
+            aria-label="Replay animation"
+            class="social-btn w-9 h-9 rounded-ui-xs bg-ui-surface border border-ui-border flex items-center justify-center text-ui-secondary hover:text-ui-heading"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 279.9 297.3"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M269.4,162.6c-2.7,66.5-55.6,120.1-121.8,123.9c-77,4.4-141.3-60-136.8-136.9C14.7,81.7,71,27.8,140,27.8 c1.8,0,3.5,0,5.3,0.1c0.3,0,0.5,0.2,0.5,0.5v15c0,1.5,1.6,2.4,2.9,1.7l35.9-20.7c1.3-0.7,1.3-2.6,0-3.3L148.6,0.3 c-1.3-0.7-2.9,0.2-2.9,1.7v15c0,0.3-0.2,0.5-0.5,0.5c-1.7-0.1-3.5-0.1-5.2-0.1C63.3,17.3,1,78.9,0,155.4 C-1,233.8,63.4,298.3,141.9,297.3c74.6-1,135.1-60.2,138-134.3c0.1-3-2.3-5.4-5.3-5.4l0,0C271.8,157.6,269.5,159.8,269.4,162.6z"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onclick="closeNotFound()"
+            class="touch-btn self-center px-6 py-2.5 rounded-ui-xs bg-ui-surface text-[14px] font-medium text-ui-primary cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /* Curved SVG scrollbar for the About modal (no dependency). */
+      var aboutScrollbar = null;
+
+      function initCurvedScrollbar(container) {
+        var content = container.querySelector(".scroll-content");
+        if (!content || container.querySelector(".scrollbar-svg")) return null;
+
+        var OFFSET = 7;
+        var EXTRA_INSET = 2;
+        var MIN_START_RATIO = 0.8;
+        var MIN_THUMB = 20;
+        var SEGMENTS = 50;
+
+        var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.classList.add("scrollbar-svg");
+        svg.setAttribute("aria-hidden", "true");
+
+        var trackPath = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "path",
+        );
+        trackPath.classList.add("scrollbar-track");
+        var thumbPath = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "path",
+        );
+        thumbPath.classList.add("scrollbar-thumb");
+
+        svg.appendChild(trackPath);
+        svg.appendChild(thumbPath);
+        container.appendChild(svg);
+
+        var pathLength = 0;
+        var thumbLength = 50;
+        var dragging = false;
+        var pointerId = null;
+
+        function updatePath() {
+          var w = container.clientWidth;
+          var h = container.clientHeight;
+          if (!w || !h) return;
+          var r = parseFloat(getComputedStyle(container).borderRadius) || 0;
+          var effectiveRadius = Math.max(r - OFFSET, 0);
+          var trackX = w - OFFSET;
+          var topY = OFFSET;
+          var bottomY = h - OFFSET;
+          var cornerX = trackX - effectiveRadius;
+          var minStartX = w * MIN_START_RATIO;
+          var startX = trackX - effectiveRadius * EXTRA_INSET;
+          if (startX < minStartX) startX = minStartX;
+          if (startX > cornerX) startX = cornerX;
+
+          trackPath.setAttribute(
+            "d",
+            "M " +
+              startX +
+              " " +
+              topY +
+              " L " +
+              cornerX +
+              " " +
+              topY +
+              " A " +
+              effectiveRadius +
+              " " +
+              effectiveRadius +
+              " 0 0 1 " +
+              trackX +
+              " " +
+              (topY + effectiveRadius) +
+              " L " +
+              trackX +
+              " " +
+              (bottomY - effectiveRadius) +
+              " A " +
+              effectiveRadius +
+              " " +
+              effectiveRadius +
+              " 0 0 1 " +
+              cornerX +
+              " " +
+              bottomY +
+              " L " +
+              startX +
+              " " +
+              bottomY,
+          );
+
+          pathLength = trackPath.getTotalLength();
+          var ratio = content.clientHeight / content.scrollHeight;
+          thumbLength = Math.max(MIN_THUMB, pathLength * ratio);
+          updateThumb();
+        }
+
+        function updateThumb() {
+          var scrollableHeight =
+            content.scrollHeight - content.clientHeight || 1;
+          var scrollRatio = content.scrollTop / scrollableHeight;
+          var startOffset = (pathLength - thumbLength) * scrollRatio;
+          var endOffset = startOffset + thumbLength;
+          var pts = [];
+          for (var i = 0; i <= SEGMENTS; i++) {
+            var t = startOffset + ((endOffset - startOffset) / SEGMENTS) * i;
+            var p = trackPath.getPointAtLength(t);
+            pts.push(p.x + " " + p.y);
+          }
+          var d = "M " + pts[0];
+          for (var j = 1; j < pts.length; j++) d += " L " + pts[j];
+          thumbPath.setAttribute("d", d);
+        }
+
+        thumbPath.addEventListener("pointerdown", function (e) {
+          e.preventDefault();
+          dragging = true;
+          pointerId = e.pointerId;
+          thumbPath.setPointerCapture(pointerId);
+        });
+        window.addEventListener("pointermove", function (e) {
+          if (!dragging || e.pointerId !== pointerId) return;
+          var rect = container.getBoundingClientRect();
+          var ratio = (e.clientY - rect.top) / rect.height;
+          ratio = Math.max(0, Math.min(1, ratio));
+          content.scrollTop =
+            ratio * (content.scrollHeight - content.clientHeight);
+          updateThumb();
+        });
+        window.addEventListener("pointerup", function (e) {
+          if (!dragging || e.pointerId !== pointerId) return;
+          dragging = false;
+          try {
+            thumbPath.releasePointerCapture(pointerId);
+          } catch (err) {}
+          pointerId = null;
+        });
+        content.addEventListener("scroll", updateThumb);
+        window.addEventListener("resize", updatePath);
+
+        updatePath();
+        return { updatePath: updatePath };
+      }
+
+      function openAbout() {
+        var m = document.getElementById("about-modal");
+        if (!m) return;
+        m.classList.remove("hidden");
+        m.classList.add("flex");
+        document.body.style.overflow = "hidden";
+        var container = m.querySelector("[data-scrollbar]");
+        if (container) {
+          if (!aboutScrollbar) aboutScrollbar = initCurvedScrollbar(container);
+          if (aboutScrollbar) aboutScrollbar.updatePath();
+        }
+      }
+      function closeAbout() {
+        var m = document.getElementById("about-modal");
+        if (!m) return;
+        m.classList.add("hidden");
+        m.classList.remove("flex");
+        document.body.style.overflow = "";
+      }
+      /* 404 popover for social icons without a link. */
+      var NOTFOUND_TEXT = "404, page not found.";
+      var notfoundTimer = null;
+
+      function typeNotFound() {
+        var el = document.getElementById("notfound-text");
+        if (!el) return;
+        clearInterval(notfoundTimer);
+        var reduce = window.matchMedia(
+          "(prefers-reduced-motion: reduce)",
+        ).matches;
+        if (reduce) {
+          el.textContent = NOTFOUND_TEXT;
+          return;
+        }
+        el.textContent = "";
+        var i = 0;
+        notfoundTimer = setInterval(function () {
+          el.textContent = NOTFOUND_TEXT.slice(0, ++i);
+          if (i >= NOTFOUND_TEXT.length) clearInterval(notfoundTimer);
+        }, 55);
+      }
+
+      function openNotFound(platform) {
+        var m = document.getElementById("notfound-modal");
+        if (!m) return;
+        var sub = document.getElementById("notfound-sub");
+        if (sub && platform)
+          sub.textContent = platform + " profile isn't linked yet.";
+        m.classList.remove("hidden");
+        m.classList.add("flex");
+        document.body.style.overflow = "hidden";
+        typeNotFound();
+      }
+
+      function closeNotFound() {
+        var m = document.getElementById("notfound-modal");
+        if (!m) return;
+        clearInterval(notfoundTimer);
+        m.classList.add("hidden");
+        m.classList.remove("flex");
+        document.body.style.overflow = "";
+      }
+
+      function replayNotFound() {
+        typeNotFound();
+      }
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          closeAbout();
+          closeNotFound();
+        }
+      });
+
+      /* Match the Spotify embed to the site theme (reloads the player). */
+      function applySpotifyTheme() {
+        var frame = document.getElementById("spotify-embed");
+        if (!frame) return;
+        var base = frame.getAttribute("data-src");
+        if (!base) return;
+        var theme = document.documentElement.classList.contains("dark")
+          ? "0"
+          : "1";
+        var src = base + "&theme=" + theme;
+        if (frame.getAttribute("src") !== src) frame.setAttribute("src", src);
+      }
+
+      function toggleTheme() {
+        var root = document.documentElement;
+        var dark = root.classList.toggle("dark");
+        var moon = document.getElementById("icon-moon");
+        var sun = document.getElementById("icon-sun");
+        if (moon) moon.classList.toggle("hidden", !dark);
+        if (sun) sun.classList.toggle("hidden", dark);
+        applySpotifyTheme();
+      }
+
+      function copyEmail() {
+        var btn = document.getElementById("copy-email-btn");
+        var status = document.getElementById("copy-email-status");
+        if (!btn) return;
+        /* Placeholder address — the owner must replace it with the real one. */
+        var address = "hello@example.com";
+        var settle = function (ok) {
+          btn.textContent = ok ? "Copied" : "Copy failed";
+          if (status) {
+            status.textContent = ok
+              ? "Placeholder address copied — swap it for your real email."
+              : "Couldn't copy automatically — select the address manually.";
+          }
+          setTimeout(function () {
+            btn.textContent = "Copy placeholder email";
+            if (status) status.textContent = "";
+          }, 2600);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(address)
+            .then(function () {
+              settle(true);
+            })
+            .catch(function () {
+              settle(false);
+            });
+        } else {
+          settle(false);
+        }
+      }
+
+      function loadWeather() {
+        var el = document.getElementById("weather-temp");
+        var sub = document.getElementById("weather-sub");
+        if (!el) return;
+        el.textContent = "Loading…";
+        fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=3.1390&longitude=101.6869&current_weather=true",
+        )
+          .then(function (res) {
+            if (!res.ok) throw new Error("weather request failed");
+            return res.json();
+          })
+          .then(function (data) {
+            if (!data || !data.current_weather)
+              throw new Error("no weather data");
+            el.textContent =
+              Math.round(data.current_weather.temperature) + "°C";
+            if (sub) sub.textContent = "Kuala Lumpur";
+          })
+          .catch(function () {
+            el.textContent = "—";
+            if (sub) sub.textContent = "Weather unavailable";
+          });
+      }
+      loadWeather();
+      applySpotifyTheme();
+
+      /* Domino clock: each digit is drawn as a domino with that many pips. */
+      var DOMINO_DIGITS = [
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+        [1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+        [1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+        [1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1],
+        [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 1],
+        [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1, 0, 1],
+      ];
+
+      function buildDominoClock() {
+        var clock = document.querySelector(".domino-clock");
+        if (!clock) return null;
+        clock.querySelectorAll(".part").forEach(function (part) {
+          if (part.children.length) return;
+          for (var i = 0; i < 9; i++) {
+            part.appendChild(document.createElement("span"));
+          }
+        });
+        return clock;
+      }
+
+      function updateDominoClock() {
+        var clock = buildDominoClock();
+        if (!clock) return;
+        var now = new Date();
+        var h24 = now.getHours();
+        var values = [
+          h24 % 12 || 12,
+          Math.floor(now.getMinutes() / 10),
+          now.getMinutes() % 10,
+          Math.floor(now.getSeconds() / 10),
+          now.getSeconds() % 10,
+        ];
+        clock.querySelectorAll(".domino").forEach(function (domino, i) {
+          var pattern = DOMINO_DIGITS[values[i]] || [];
+          domino.querySelectorAll(".part span").forEach(function (dot, j) {
+            dot.classList.toggle("active", !!pattern[j]);
+          });
+        });
+        var ampm = clock.querySelector(".ampm");
+        if (ampm) ampm.textContent = h24 >= 12 ? "PM" : "AM";
+        var timeEl = document.getElementById("domino-clock-time");
+        if (timeEl) {
+          timeEl.textContent = now.toLocaleTimeString();
+          timeEl.setAttribute("datetime", now.toISOString());
+        }
+      }
+      updateDominoClock();
+      setInterval(updateDominoClock, 1000);
+    </script>
+  </body>
+</html>

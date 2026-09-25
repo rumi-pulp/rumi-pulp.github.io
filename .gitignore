@@ -1,0 +1,31 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies (if a toolchain is added later)
+node_modules/
+dist/
+build/
+
+# Environment
+.env
+.env.*
+
+# Internal design/process docs (not part of the public site)
+.impeccable/
+PRODUCT.md
+DESIGN.md
