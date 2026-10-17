@@ -65,6 +65,109 @@
   };
   RPO.removeDraft = function (id) { var list = RPO.drafts().filter(function (d) { return d.id !== id; }); return RPO.writeDrafts(list); };
 
+  /* ── small dialogs inside the page (the browser's own prompt and confirm boxes are not available everywhere) ── */
+  var el = RP.el, dlgSeq = 0, dlgClose = null;
+  function dlgRemember() {
+    var sel = window.getSelection();
+    return { el: document.activeElement, range: sel && sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null };
+  }
+  // Puts focus (and the text selection of an editor) back where it was when the dialog opened.
+  function dlgRecall(m) {
+    try {
+      if (m.el && m.el !== document.body && m.el.focus && document.documentElement.contains(m.el)) m.el.focus({ preventScroll: true });
+      if (m.range && m.el && !/^(INPUT|TEXTAREA)$/.test(m.el.nodeName) && document.documentElement.contains(m.range.startContainer)) {
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(m.range);
+      }
+    } catch (e) { /* nothing to put back */ }
+  }
+  function dlgKeys(root, cancel) {   // Escape cancels, Tab stays inside
+    root.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); cancel(); return; }
+      if (e.key !== "Tab") return;
+      var f = Array.prototype.filter.call(root.querySelectorAll("button, input, textarea, [href]"), function (x) { return !x.disabled; });
+      if (!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    });
+  }
+  function dlgPlace(pop, anchor) {
+    var rc = anchor && anchor.getBoundingClientRect ? anchor.getBoundingClientRect() : null;
+    if (!rc || (window.matchMedia && window.matchMedia("(max-width: 640px)").matches)) { pop.classList.add("center"); return; }
+    pop.style.left = "8px"; pop.style.top = "0px";
+    var w = pop.offsetWidth, h = pop.offsetHeight, top = rc.bottom + 10;
+    if (top + h > window.innerHeight - 8) top = rc.top - h - 10;
+    pop.style.top = Math.max(8, Math.min(top, window.innerHeight - h - 8)) + "px";
+    pop.style.left = Math.max(8, Math.min(rc.left, window.innerWidth - w - 8)) + "px";
+  }
+  // Asks for a web address. opts: title, help, placeholder, value, anchor (an element or range to sit beside),
+  // validate(text) -> an error message or null. Resolves with the trimmed address, or null when cancelled.
+  RPO.askLink = function (opts) {
+    opts = opts || {};
+    if (dlgClose) dlgClose();
+    return new Promise(function (resolve) {
+      var mem = dlgRemember(), id = "dlg" + (++dlgSeq), finished = false;
+      var pop = el("form", "dlg-pop"), t = el("label", "dlg-t", opts.title || "Add a link"), inp = el("input", "field"), err = el("div", "dlg-err");
+      var help = opts.help ? el("p", "dlg-h", opts.help) : null, row = el("div", "dlg-row"), add = el("button", "btn small primary", "Add"), no = el("button", "btn small", "Cancel");
+      pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", opts.title || "Add a link"); pop.noValidate = true;
+      t.setAttribute("for", id); inp.id = id; inp.type = "text"; inp.autocomplete = "off"; inp.spellcheck = false;
+      inp.setAttribute("inputmode", "url"); inp.placeholder = opts.placeholder || "https://"; inp.value = opts.value != null ? opts.value : "https://";
+      if (help) { help.id = id + "-h"; inp.setAttribute("aria-describedby", id + "-h"); }
+      err.setAttribute("role", "status"); err.setAttribute("aria-live", "polite");
+      add.type = "submit"; no.type = "button";
+      row.appendChild(add); row.appendChild(no);
+      pop.appendChild(t); if (help) pop.appendChild(help); pop.appendChild(inp); pop.appendChild(err); pop.appendChild(row);
+      function done(v) {
+        if (finished) return;
+        finished = true; dlgClose = null;
+        document.removeEventListener("mousedown", outside, true);
+        pop.remove(); dlgRecall(mem); resolve(v);
+      }
+      function outside(e) { if (!pop.contains(e.target)) done(null); }
+      pop.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var v = inp.value.trim(), msg = opts.validate ? opts.validate(v) : (/^https?:\/\/[^\s]+$/i.test(v) ? null : "Links must start with http:// or https://.");
+        if (msg) { err.textContent = msg; inp.setAttribute("aria-invalid", "true"); inp.focus(); return; }
+        done(v);
+      });
+      inp.addEventListener("input", function () { err.textContent = ""; inp.removeAttribute("aria-invalid"); });
+      no.addEventListener("click", function () { done(null); });
+      dlgKeys(pop, function () { done(null); });
+      dlgClose = function () { done(null); };
+      document.body.appendChild(pop);
+      dlgPlace(pop, opts.anchor);
+      document.addEventListener("mousedown", outside, true);
+      inp.focus({ preventScroll: true }); inp.setSelectionRange(inp.value.length, inp.value.length);
+    });
+  };
+  // Asks a yes/no question. opts: title, message, confirmLabel, danger (the main button is filled in and Cancel has focus).
+  RPO.confirmBox = function (opts) {
+    opts = opts || {};
+    if (dlgClose) dlgClose();
+    return new Promise(function (resolve) {
+      var mem = dlgRemember(), id = "dlg" + (++dlgSeq), finished = false;
+      var back = el("div", "dlg-back"), card = el("div", "dlg-card"), h = el("h2", "dlg-t", opts.title || "Are you sure?"), m = opts.message ? el("p", "dlg-m", opts.message) : null;
+      var row = el("div", "dlg-row"), no = el("button", "btn small", "Cancel"), yes = el("button", "btn small " + (opts.danger ? "danger" : "primary"), opts.confirmLabel || "OK");
+      card.setAttribute("role", "alertdialog"); card.setAttribute("aria-modal", "true"); card.setAttribute("aria-labelledby", id + "-t");
+      h.id = id + "-t"; if (m) { m.id = id + "-m"; card.setAttribute("aria-describedby", id + "-m"); }
+      no.type = "button"; yes.type = "button";
+      row.appendChild(no); row.appendChild(yes);
+      card.appendChild(h); if (m) card.appendChild(m); card.appendChild(row); back.appendChild(card);
+      function done(v) {
+        if (finished) return;
+        finished = true; dlgClose = null;
+        back.remove(); dlgRecall(mem); resolve(v);
+      }
+      no.addEventListener("click", function () { done(false); });
+      yes.addEventListener("click", function () { done(true); });
+      back.addEventListener("mousedown", function (e) { if (e.target === back) done(false); });
+      dlgKeys(card, function () { done(false); });
+      dlgClose = function () { done(false); };
+      document.body.appendChild(back);
+      (opts.danger ? no : yes).focus({ preventScroll: true });
+    });
+  };
+
   /* ── IndexedDB: db "rumi-pulp", stores "handles" (the remembered folder) and "images" (draft pictures) ── */
   function openDb() {
     return new Promise(function (resolve, reject) {

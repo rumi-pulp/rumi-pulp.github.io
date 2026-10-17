@@ -811,21 +811,24 @@
       });
     }
     else if (kind === "video") {
-      var vu = window.prompt("Link to a YouTube or Vimeo video", "https://");
-      if (vu === null) { closeInserter(true); return; }
-      var v = RP.parseVideo(vu);
-      if (!v) { wmsg("That doesn't look like a YouTube or Vimeo link."); closeInserter(true); return; }
-      commitBlock(RPB.videoCard(v), kind, "Video added. It plays on the published page.");
+      RPO.askLink({
+        title: "Add a video", help: "Paste a YouTube or Vimeo link.", anchor: plus,
+        validate: function (u) { return RP.parseVideo(u) ? null : "That doesn't look like a YouTube or Vimeo link."; }
+      }).then(function (u) {
+        if (u === null) { closeInserter(true); return; }
+        commitBlock(RPB.videoCard(RP.parseVideo(u)), kind, "Video added. It plays on the published page.", tgt);
+      });
     }
     else if (kind === "part") commitBlock(RPB.stars(), kind, "New part added.");
     else if (kind === "code") commitBlock(RPB.codeBlock(""), kind, "Code block added.");
     else if (kind === "embed") {
-      var u = window.prompt("Link to embed (must start with http:// or https://)", "https://");
-      if (u === null) { closeInserter(true); return; }
-      u = u.trim();
-      var card = RPB.URL_RE.test(u) ? RPB.linkCard(u) : null;
-      if (!card) { wmsg("Links must start with http:// or https://."); closeInserter(true); return; }
-      commitBlock(card, kind, "Link added.");
+      RPO.askLink({
+        title: "Add an embed", help: "Paste a link. It is shown as a link card.", anchor: plus,
+        validate: function (u) { return RPB.URL_RE.test(u) && RPB.linkCard(u) ? null : "Links must start with http:// or https://."; }
+      }).then(function (u) {
+        if (u === null) { closeInserter(true); return; }
+        commitBlock(RPB.linkCard(u), kind, "Link added.", tgt);
+      });
     }
   });
 
@@ -865,14 +868,18 @@
     var r = selRange();
     if (!r) { wmsg("Select some words first, then add a link."); return; }
     var saved = r.cloneRange();
-    var u = window.prompt("Link address (must start with http:// or https://)", "https://");
-    if (u === null) return;
-    u = u.trim();
-    if (!RPB.URL_RE.test(u)) { wmsg("Links must start with http:// or https://."); return; }
-    var s = window.getSelection(); s.removeAllRanges(); s.addRange(saved);
-    edit(function () { document.execCommand("createLink", false, u); });
-    Array.prototype.forEach.call(body.querySelectorAll("a[href]"), function (a) { a.target = "_blank"; a.rel = "noopener"; });
-    wmsg("Link added.");
+    RPO.askLink({
+      title: "Add a link", help: "The address must start with http:// or https://.", anchor: saved,
+      validate: function (u) { return RPB.URL_RE.test(u) ? null : "Links must start with http:// or https://."; }
+    }).then(function (u) {
+      if (u === null) { body.focus({ preventScroll: true }); return; }
+      body.focus({ preventScroll: true });
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(saved);
+      edit(function () { document.execCommand("createLink", false, u); });
+      Array.prototype.forEach.call(body.querySelectorAll("a[href]"), function (a) { a.target = "_blank"; a.rel = "noopener"; });
+      wmsg("Link added.");
+      afterEdit(); updateBar();
+    });
   }
   var NOTE_CUT = "That selection cuts through a private note. Select the whole note or text outside it.";
   function runCmd(cmd) {
@@ -960,7 +967,7 @@
   $("note-text").addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); closeNote("save"); } });
   function noteDirty() { return openNoteId !== null && $("note-text").value.trim() !== (NOTES[openNoteId] || "").trim(); }
   document.addEventListener("mousedown", function (e) {
-    if (openNoteId === null || notePop.contains(e.target)) return;
+    if (openNoteId === null || notePop.contains(e.target) || (e.target.closest && e.target.closest(".dlg-back, .dlg-pop"))) return;
     closeNote(noteDirty() ? "save" : "cancel");   // clicking away saves what you typed
   });
   // Numbered markers sit in the right margin on wide screens, or just after the text on narrow ones.
@@ -1277,7 +1284,13 @@
   /* ═════════ leaving things with Escape ═════════ */
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape" || view !== "write") return;
-    if (openNoteId !== null) { if (!noteDirty() || window.confirm("Discard this note?")) closeNote("cancel"); return; }
+    if (openNoteId !== null) {
+      if (!noteDirty()) { closeNote("cancel"); return; }
+      RPO.confirmBox({ title: "Discard this note?", message: "What you typed in it will be lost.", confirmLabel: "Discard", danger: true }).then(function (ok) {
+        if (ok) closeNote("cancel"); else $("note-text").focus({ preventScroll: true });
+      });
+      return;
+    }
     if (!$("goal-form").hidden) { closeGoal(false); return; }
     if (!imgBar.hidden) { hideImgBar(true); return; }
     if (!selBar.hidden) { hideBar(); body.focus({ preventScroll: true }); var s = window.getSelection(); if (s.rangeCount && body.contains(s.anchorNode)) s.collapseToEnd(); return; }

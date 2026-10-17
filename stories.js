@@ -170,22 +170,34 @@
     if (a === "schedule") { scheduling = s.slug; say(""); render(); var f = $("sch-date"); if (f) f.focus(); return; }
     if (a === "delete") {
       if (s.kind === "draft" && s.unfinished) {
-        if (!window.confirm("Delete the draft “" + s.title + "”? An earlier publish attempt left files in your rumi-pulp folder (posts/" + s.unfinished + "…). They are removed too. This can't be undone.")) return;
-        start(function (dir) {
-          return RPO.removePost(dir, s.unfinished, { id: s.partialId }).then(function () {
-            RPO.removeDraft(s.id); RPO.imgDrop(s.id);
-            say("The draft “" + s.title + "” and the files from its unfinished publish were deleted." + commitNote());
+        RPO.confirmBox({
+          title: "Delete this draft?", confirmLabel: "Delete", danger: true,
+          message: "“" + s.title + "”. An earlier publish attempt left files in your rumi-pulp folder (posts/" + s.unfinished + "…). They are removed too. This can't be undone."
+        }).then(function (ok) {
+          if (!ok) return;
+          start(function (dir) {
+            return RPO.removePost(dir, s.unfinished, { id: s.partialId }).then(function () {
+              RPO.removeDraft(s.id); RPO.imgDrop(s.id);
+              say("The draft “" + s.title + "” and the files from its unfinished publish were deleted." + commitNote());
+            });
           });
         });
       } else if (s.kind === "draft") {
-        if (!window.confirm("Delete the draft “" + s.title + "”? This can't be undone.")) return;
-        RPO.removeDraft(s.id); RPO.imgDrop(s.id);
-        say("The draft “" + s.title + "” was deleted.");
-        render(true);
+        RPO.confirmBox({ title: "Delete this draft?", message: "“" + s.title + "”. This can't be undone.", confirmLabel: "Delete", danger: true }).then(function (ok) {
+          if (!ok) return;
+          RPO.removeDraft(s.id); RPO.imgDrop(s.id);
+          say("The draft “" + s.title + "” was deleted.");
+          render(true);
+        });
       } else {
-        if (!window.confirm("Delete “" + s.title + "” from the site? Its text and pictures are removed from your rumi-pulp folder. This can't be undone.")) return;
-        start(function (dir) {
-          return RPO.removePost(dir, s.slug, { id: s.id }).then(function () { say("“" + s.title + "” was deleted." + commitNote()); });
+        RPO.confirmBox({
+          title: "Delete this story from the site?", confirmLabel: "Delete", danger: true,
+          message: "“" + s.title + "”. Its text and pictures are removed from your rumi-pulp folder. This can't be undone."
+        }).then(function (ok) {
+          if (!ok) return;
+          start(function (dir) {
+            return RPO.removePost(dir, s.slug, { id: s.id }).then(function () { say("“" + s.title + "” was deleted." + commitNote()); });
+          });
         });
       }
       return;
