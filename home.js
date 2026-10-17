@@ -80,25 +80,11 @@
     }
   });
 
-  /* ── about + playlist ── */
+  /* ── about ── */
   $("about-btn").addEventListener("click", function () {
     var open = $("about-full").hidden;
     $("about-full").hidden = !open;
     this.setAttribute("aria-expanded", String(open));
     this.textContent = open ? "Show less" : "Read more";
-  });
-  $("play-btn").addEventListener("click", function () {
-    var slot = $("player-slot"), open = !slot.firstChild;
-    slot.textContent = "";
-    if (open) {
-      var w = el("div", "player"), f = document.createElement("iframe");
-      f.title = "Spotify playlist"; f.loading = "lazy";
-      f.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
-      f.src = "https://open.spotify.com/embed/playlist/38u7cDibJ7b9sVd3iIWgdu?utm_source=generator&theme=" + (document.documentElement.dataset.theme === "dark" ? "0" : "1");
-      w.appendChild(f);
-      slot.appendChild(w);
-    }
-    this.setAttribute("aria-expanded", String(open));
-    this.textContent = open ? "Hide playlist" : "Play my playlist";
   });
 })();
