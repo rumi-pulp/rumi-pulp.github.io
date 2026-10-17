@@ -1,69 +1,33 @@
-# rumi-pulp blog
+# rumi-pulp
 
-A single-page **bento-grid blog** for Aiman ("rumi-pulp"), a creative writer based in
-Kuala Lumpur. Hand-coded HTML + Tailwind (CDN) with vanilla JavaScript — no build step.
+The personal blog of Rumi, a creative writer in Kuala Lumpur. It's a plain website
+(HTML, CSS and a little JavaScript) with nothing to install and no build step.
 
-## Features
+## Write a post
 
-- Responsive bento grid across desktop, laptop, tablet and mobile
-- Dominant hero tile — portrait and the writing (with blinking caret) lead the page
-- Light / dark theme toggle (dark by default), in the "Now" tile
-- About pop-out modal — story, what I do, experience, skills (scrim, close button, Escape)
-- Curved SVG scrollbar in the About modal (follows the panel's radius, no dependency)
-- Playful "404, page not found." popover for the unlinked X / Instagram / LinkedIn icons
-- Live Kuala Lumpur weather from Open-Meteo, with loading / ready / error states
-- Live domino clock — each digit rendered as domino pips, updating every second
-- "Now playing" — the real Spotify embed in a flat player frame
-- Infinite logo marquee for the tool stack (respects reduced-motion)
-- Hardware tile: PC, iPhone 16 Pro, Apple Watch 11, AirPods Pro 2, Fujifilm X-M5
-- Honest "Selected work" empty state — no fabricated pieces
-- Copy-email control with true success / failure feedback
+1. Open a terminal in the `rumi-pulp` folder and run `node serve.js`.
+2. Open http://localhost:4321/write.html in Chrome or Edge.
+3. Write your post and press **Publish**. The first time, choose the `rumi-pulp`
+   folder (the one that contains `index.html`). Your browser remembers it after that.
+4. To put it online, commit and push the change (GitHub Desktop: Commit to main,
+   then Push origin).
 
-## Tech stack
+Drafts save automatically in your browser. To fix a published post, open it from
+"edit a published post" at the bottom of the write page and publish again.
 
-- HTML5
-- [Tailwind CSS](https://tailwindcss.com/) via CDN
-- Vanilla JavaScript (inline)
-- No dependencies or build tooling
+## Where posts live
 
-## Getting started
+Each post is a file in `posts/` (for example `posts/my-first-post.md`). The list of
+posts is `posts/index.json`; the write page keeps it up to date for you.
 
-Just open `index.html` in a browser, or serve the folder locally:
+## Preview the site locally
 
-```bash
-python -m http.server 8000
-```
+Run `node serve.js` and open http://localhost:4321. The **write** tab only appears
+when the site runs on your own computer.
 
-Then visit http://localhost:8000.
+## Files
 
-## Project structure
-
-```
-.
-├── index.html          # the whole site (markup, Tailwind config, CSS, JS)
-├── assets/             # local logos, icons, and the portrait
-│   ├── adobelightroom.svg
-│   ├── canva.svg
-│   ├── capcut-icon.svg
-│   ├── github.svg
-│   ├── microsoftword.svg
-│   ├── openai.svg
-│   ├── procreate.png
-│   └── rumi.webp
-├── .gitignore
-└── README.md
-```
-
-## Notes & credits
-
-- Product and brand icons are trademarks of their respective owners, used here for a personal
-  blog.
-- `procreate.png` and `capcut-icon.svg` sourced from Wikimedia Commons.
-- Live weather data from [Open-Meteo](https://open-meteo.com/).
-- Some decorative imagery is hotlinked from Framer's CDN.
-
-## License
-
-Personal project. Some content is still placeholder — notably the email (`hello@example.com`)
-and the X / Instagram / LinkedIn profiles, which currently just show a 404 popover — and must be
-replaced by the owner before launch.
+- `index.html`, `blog.html`, `post.html`, `write.html` and their `.js` files: the pages
+- `styles.css`: the look
+- `site.js`: the status bar, theme and helpers shared by every page
+- `assets/`: images and icons

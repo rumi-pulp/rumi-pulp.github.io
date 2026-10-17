@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Write — rumi-pulp</title>
+<meta name="robots" content="noindex" />
+<meta name="description" content="Writing desk for rumi-pulp." />
+<script>try{var t=localStorage.getItem("rp:theme");document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="write">
+  <header class="bar">
+    <div class="bar-in">
+      <div class="bar-l">
+        <a class="brand" href="index.html">rumi-pulp</a>
+        <nav class="nav" aria-label="Main">
+          <a href="index.html" data-nav="home">home</a>
+          <a href="blog.html" data-nav="blog">blog</a>
+          <a href="write.html" data-nav="write" id="nav-write" hidden>write</a>
+        </nav>
+      </div>
+      <div class="bar-r">
+        <span class="bar-st"><span class="live-dot" aria-hidden="true"></span><span class="bar-w">online</span></span>
+        <span id="bar-wx">KL …</span>
+        <span id="bar-time">--:-- --</span>
+        <button type="button" id="theme-btn" aria-label="Switch to light mode"></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <noscript><p>The writing desk needs JavaScript.</p></noscript>
+
+    <section class="gate" id="gate" hidden aria-labelledby="gate-h">
+      <h1 id="gate-h">Write</h1>
+      <p id="gate-msg">This page only works on Rumi's own computer.</p>
+      <p><a href="index.html">Back to home</a></p>
+    </section>
+
+    <section id="editor" hidden aria-labelledby="write-h">
+      <div class="ed-head">
+        <h1 id="write-h" tabindex="-1">New post</h1>
+        <span class="ed-state" id="ed-saved" aria-live="polite">Not saved yet</span>
+      </div>
+      <p class="ed-note" id="ed-mode" hidden></p>
+      <div class="ed" id="ed" data-mode="edit">
+        <div class="ed-body">
+          <div class="ed-pane edit-pane">
+            <input class="ttl" id="ed-title" placeholder="Title" aria-label="Post title" autocomplete="off" />
+            <div class="tag-row"><label for="ed-tags">Topics</label><input class="tag-in" id="ed-tags" placeholder="essay, notes, poetry" spellcheck="false" autocomplete="off" /></div>
+            <div class="tag-row"><label for="ed-summary">Summary</label><input class="tag-in" id="ed-summary" placeholder="One line for the post list (optional)" autocomplete="off" /></div>
+            <textarea id="ed-text" aria-label="Post text" placeholder="Start writing…"></textarea>
+          </div>
+          <div class="ed-pane pv-pane" aria-label="Preview">
+            <div class="pv-label">Preview</div>
+            <div class="pv">
+              <h1 id="pv-title" class="placeholder">Title</h1>
+              <div class="prose" id="pv-body"><p class="placeholder">Your post will appear here as you type.</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="ed-foot">
+          <span class="ed-count" id="ed-count">0 words</span>
+          <div class="ed-actions">
+            <button class="btn preview-btn" type="button" id="k-preview">Preview</button>
+            <button class="btn" type="button" id="k-new">New</button>
+            <button class="btn" type="button" id="k-save">Save draft<span class="k">Ctrl+S</span></button>
+            <button class="btn primary" type="button" id="k-publish">Publish</button>
+          </div>
+        </div>
+        <div class="ed-msg" id="ed-msg" aria-live="polite"></div>
+      </div>
+
+      <div class="drafts">
+        <h2 class="sec">your drafts</h2>
+        <div id="draft-list"></div>
+      </div>
+
+      <div class="drafts">
+        <h2 class="sec">edit a published post</h2>
+        <div id="published-list"><p class="dim">Loading…</p></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="site.js" defer></script>
+  <script src="write.js" defer></script>
+</body>
+</html>

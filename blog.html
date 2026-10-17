@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Blog — rumi-pulp</title>
+<meta name="description" content="Essays, notes and short poems by Rumi, a creative writer based in Kuala Lumpur." />
+<script>try{var t=localStorage.getItem("rp:theme");document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="blog">
+  <header class="bar">
+    <div class="bar-in">
+      <div class="bar-l">
+        <a class="brand" href="index.html">rumi-pulp</a>
+        <nav class="nav" aria-label="Main">
+          <a href="index.html" data-nav="home">home</a>
+          <a href="blog.html" data-nav="blog">blog</a>
+          <a href="write.html" data-nav="write" id="nav-write" hidden>write</a>
+        </nav>
+      </div>
+      <div class="bar-r">
+        <span class="bar-st"><span class="live-dot" aria-hidden="true"></span><span class="bar-w">online</span></span>
+        <span id="bar-wx">KL …</span>
+        <span id="bar-time">--:-- --</span>
+        <button type="button" id="theme-btn" aria-label="Switch to light mode"></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section aria-labelledby="blog-h">
+      <h1 class="page-h" id="blog-h">Blog</h1>
+      <p class="page-sub">Essays, notes and short poems. Newest first.</p>
+      <div class="tools" id="tools" hidden>
+        <label class="search" for="search-in">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="search-in" type="search" aria-label="Search posts" placeholder="Search posts" spellcheck="false" />
+        </label>
+        <div class="tags" id="tag-filter" role="group" aria-label="Filter by topic"></div>
+      </div>
+      <div class="list-wrap"><ul class="posts" id="listing"><li class="empty">Loading posts…</li></ul></div>
+      <div class="count" id="listing-count" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script src="site.js" defer></script>
+  <script src="blog.js" defer></script>
+</body>
+</html>

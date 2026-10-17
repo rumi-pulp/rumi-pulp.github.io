@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>rumi-pulp</title>
+<meta name="description" content="A post on rumi-pulp, the blog of Rumi, a creative writer based in Kuala Lumpur." />
+<script>try{var t=localStorage.getItem("rp:theme");document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="blog">
+  <header class="bar">
+    <div class="bar-in">
+      <div class="bar-l">
+        <a class="brand" href="index.html">rumi-pulp</a>
+        <nav class="nav" aria-label="Main">
+          <a href="index.html" data-nav="home">home</a>
+          <a href="blog.html" data-nav="blog">blog</a>
+          <a href="write.html" data-nav="write" id="nav-write" hidden>write</a>
+        </nav>
+      </div>
+      <div class="bar-r">
+        <span class="bar-st"><span class="live-dot" aria-hidden="true"></span><span class="bar-w">online</span></span>
+        <span id="bar-wx">KL …</span>
+        <span id="bar-time">--:-- --</span>
+        <button type="button" id="theme-btn" aria-label="Switch to light mode"></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="article">
+      <a class="back" href="blog.html">← All posts</a>
+      <div class="meta" id="post-meta"></div>
+      <h1 id="post-title" tabindex="-1">Loading…</h1>
+      <div class="prose" id="post-body" aria-live="polite"></div>
+    </div>
+    <nav class="post-foot" id="post-foot" aria-label="More posts" hidden>
+      <span id="prev-wrap"></span>
+      <span id="next-wrap" class="next"></span>
+    </nav>
+  </main>
+
+  <script src="site.js" defer></script>
+  <script src="post.js" defer></script>
+</body>
+</html>
