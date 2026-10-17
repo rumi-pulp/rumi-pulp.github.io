@@ -326,6 +326,7 @@ main { overflow-x: clip; }
 .mk-fig { margin: 1.8em 0; }
 .mk-fig img { display: block; width: 100%; height: auto; border: 1px solid var(--rule); background: var(--hover); }
 .mk-fig.sel img { outline: 1px solid var(--ink); outline-offset: 3px; }
+.mk-stars:focus, .mk-embed:focus { outline: 1px solid var(--ink); outline-offset: 4px; }
 .mk-fig:focus-visible { outline: 1px solid var(--ink); outline-offset: 4px; }
 .mk-fig.wide, .mk-fig.full { position: relative; left: 50%; transform: translateX(-50%); }
 .mk-fig.wide { width: min(calc(100vw - 48px), calc(66ch + 160px)); }

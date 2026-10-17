@@ -278,8 +278,19 @@
     if (!s.rangeCount) return null;
     var r = s.getRangeAt(0);
     if (!body.contains(r.startContainer) || !body.contains(r.endContainer)) return null;
-    var a = linPoint(r.startContainer, r.startOffset), z = linPoint(r.endContainer, r.endOffset);
+    var a = editablePoint(r.startContainer, r.startOffset), z = editablePoint(r.endContainer, r.endOffset);
     return a && z ? { s: a, e: z } : null;
+  }
+  // linPoint, except that a position on a picture, divider or card (not its caption) is given as the line beside it.
+  function editablePoint(node, off) {
+    var blk = topBlock(node);
+    if (blk && isBlockNode(blk) && !closestTag(node, /^FIGCAPTION$/)) {
+      var nx = blk.nextElementSibling, pv = blk.previousElementSibling, kids = body.children;
+      if (nx && nx.nodeName === "P") return { b: Array.prototype.indexOf.call(kids, nx), o: 0 };
+      if (pv && pv.nodeName === "P") return { b: Array.prototype.indexOf.call(kids, pv), o: linLen(pv) };
+      return null;
+    }
+    return linPoint(node, off);
   }
   // spaceAt: a text position where the browser has not yet put the space that a typing shortcut swallows; the snapshot includes it,
   // so that undoing "# " gives back "# " as written.
@@ -460,6 +471,114 @@
   function placeCaret(node) {
     var r = document.createRange(), s = window.getSelection();
     r.selectNodeContents(node); r.collapse(true); s.removeAllRanges(); s.addRange(r);
+  }
+
+  /* ═════════ removing blocks that are not text ═════════ */
+  // A picture, divider or card: not editable text, but focusable so it can be selected.
+  function isBlockNode(n) { return !!n && n.nodeType === 1 && n.parentNode === body && n.nodeName !== "P" && n.getAttribute("contenteditable") === "false"; }
+  function placeCaretEnd(node) {
+    var r = document.createRange(), s = window.getSelection();
+    r.selectNodeContents(node); r.collapse(false); s.removeAllRanges(); s.addRange(r);
+  }
+  // Removes a block and leaves the cursor in a text line: keep (if given), else the line after, else the line before, else a new one.
+  function dropBlock(blk, message, keep) {
+    pushUndo();
+    if (curFig === blk) hideImgBar(false);
+    var next = blk.nextElementSibling, prev = blk.previousElementSibling, p = keep, atEnd = false;
+    if (!p) {
+      if (next && next.nodeName === "P") p = next;
+      else if (prev && prev.nodeName === "P") { p = prev; atEnd = true; }
+      else { p = RPB.para(""); body.insertBefore(p, blk); }
+    }
+    blk.remove();
+    body.focus({ preventScroll: true });
+    if (atEnd) placeCaretEnd(p); else placeCaret(p);
+    wmsg(message);
+    afterEdit();
+  }
+  // Arrow keys on a selected block: the cursor moves to the line after (or before) it.
+  // Only when there is no text line there is one made, and it goes away again if the cursor leaves it empty.
+  function caretBeside(blk, after) {
+    var p = after ? blk.nextElementSibling : blk.previousElementSibling;
+    if (!p || p.nodeName !== "P") {
+      p = RPB.para("");
+      p.setAttribute("data-temp", "1");
+      body.insertBefore(p, after ? blk.nextSibling : blk);
+    }
+    body.focus({ preventScroll: true });
+    if (after) placeCaret(p); else placeCaretEnd(p);
+  }
+  function dropTempLines() {
+    qsa(body, "p[data-temp]").forEach(function (p) {
+      if (p.textContent.trim()) p.removeAttribute("data-temp");
+      else if (p !== curBlock() && p !== body.lastElementChild) { p.remove(); renderMarks(); }
+    });
+  }
+  function preText(pre) {
+    var t = "";
+    (function walk(x) {
+      Array.prototype.forEach.call(x.childNodes, function (c) {
+        if (c.nodeType === 3) t += c.nodeValue; else if (c.nodeName === "BR") t += "\n"; else if (c.nodeType === 1) walk(c);
+      });
+    })(pre);
+    return t.replace(/\u00a0/g, " ").replace(/\n+$/, "");
+  }
+  // Backspace at the very start of a code block turns it back into text, one paragraph per line (an empty block just goes).
+  function unwrapCode(pre) {
+    pushUndo();
+    var text = preText(pre), prev = pre.previousElementSibling, next = pre.nextElementSibling, first;
+    if (!text) {
+      if (isEmptyPara(prev)) { pre.remove(); body.focus({ preventScroll: true }); placeCaretEnd(prev); }
+      else if (isEmptyPara(next)) { pre.remove(); body.focus({ preventScroll: true }); placeCaret(next); }
+      else { first = RPB.para(""); body.replaceChild(first, pre); body.focus({ preventScroll: true }); placeCaret(first); }
+      wmsg("Code block removed.");
+    } else {
+      text.split("\n").forEach(function (line, i) {
+        var p = RPB.para(line); body.insertBefore(p, pre); if (!i) first = p;
+      });
+      pre.remove();
+      body.focus({ preventScroll: true }); placeCaret(first);
+      wmsg("Code block turned into text.");
+    }
+    afterEdit();
+  }
+  // Delete at the end of a code block pulls the next line up into it (a block that is not text gets selected instead).
+  function mergeIntoCode(pre) {
+    var next = pre.nextElementSibling;
+    if (!next || isBlockNode(next) || !/^(P|H2|H3|BLOCKQUOTE)$/.test(next.nodeName)) return;
+    if (next.querySelector(".mk-note, a, img, figure, .mk-embed, .mk-stars")) { wmsg("That line has a note or a link, so it can't be pulled into a code block."); return; }
+    var txt = preText(next);
+    if (!txt && next === body.lastElementChild) return;   // the empty line that always waits at the end
+    pushUndo();
+    var at = pre.childNodes.length, endsInBreak = !!pre.lastChild && pre.lastChild.nodeName === "BR";
+    txt.split("\n").forEach(function (line, i) {
+      if (!txt) return;
+      if (i || (at && !endsInBreak)) pre.appendChild(document.createElement("br"));
+      if (line) pre.appendChild(document.createTextNode(line));
+    });
+    next.remove();
+    var r = document.createRange(), s = window.getSelection();
+    r.setStart(pre, at); r.collapse(true); s.removeAllRanges(); s.addRange(r);
+    afterEdit();
+  }
+  // Backspace / Delete where the browser would do nothing useful. Returns true when handled.
+  function deleteKey(e) {
+    if (e.isComposing || e.keyCode === 229) return false;   // an input method is at work
+    var sel = window.getSelection();
+    if (!sel.rangeCount || !sel.isCollapsed || !body.contains(sel.anchorNode)) return false;
+    var cb = curBlock(), back = e.key === "Backspace", pt = cb && linPoint(sel.anchorNode, sel.anchorOffset);
+    if (!cb || !pt) return false;
+    if (cb.nodeName === "PRE") {
+      if (back && pt.o === 0) { e.preventDefault(); unwrapCode(cb); return true; }
+      if (!back && pt.o >= linLen(cb)) { e.preventDefault(); mergeIntoCode(cb); return true; }
+      return false;
+    }
+    if (cb.nodeName !== "P") return false;
+    var empty = isEmptyPara(cb), nb = back ? cb.previousElementSibling : cb.nextElementSibling;
+    if (!isBlockNode(nb) || !(back ? pt.o === 0 : empty || pt.o >= linLen(cb))) return false;
+    e.preventDefault();   // text is never pulled into, or deleted along with, a block: only an empty line removes it
+    if (empty) dropBlock(nb, nb.nodeName === "FIGURE" ? "Image removed." : "Block removed.", cb);
+    return true;
   }
 
   /* ═════════ the "+" inserter ═════════ */
@@ -900,7 +1019,7 @@
       var c = b.getAttribute("data-cmd"); if (c in st) pressed(b, st[c]);
     });
   }
-  document.addEventListener("selectionchange", function () { updateBar(); updatePlus(); });
+  document.addEventListener("selectionchange", function () { dropTempLines(); updateBar(); updatePlus(); });
   window.addEventListener("scroll", function () { if (view === "write") updateBar(); if (!imgBar.hidden) placeImgBar(); if (openNoteId !== null) placeNotePop(); }, { passive: true });
   window.addEventListener("resize", function () { if (view !== "write") return; fitAll(); updatePlus(); if (!selBar.hidden) updateBar(); if (!imgBar.hidden) placeImgBar(); });
   selBar.addEventListener("mousedown", function (e) { e.preventDefault(); });
@@ -982,10 +1101,19 @@
   body.addEventListener("keydown", function (e) {
     var mod = e.ctrlKey || e.metaKey, k = (e.key || "").toLowerCase(), ci;
     if (historyKey(e)) return;
-    // keyboard on a picture
-    if (e.target.nodeName === "FIGURE") {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showImgBar(e.target, true); return; }
-      if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); removeFigure(e.target); return; }
+    // keyboard on a picture, divider or card that has been selected (clicked or tabbed to)
+    if (isBlockNode(e.target)) {
+      var sb = e.target;
+      if (sb.nodeName === "FIGURE" && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); showImgBar(sb, true); return; }
+      if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); dropBlock(sb, sb.nodeName === "FIGURE" ? "Image removed." : "Block removed."); return; }
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); hideImgBar(false); caretBeside(sb, true); return; }
+      if (!mod && !e.altKey && !e.shiftKey) {
+        if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); caretBeside(sb, true); return; }
+        if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); caretBeside(sb, false); return; }
+      }
+      // typing or Enter: the cursor moves to the line after and the key goes through there
+      if (!mod && !e.altKey && !e.isComposing && (e.key.length === 1 || e.key === "Enter")) caretBeside(sb, true);
+      return;
     }
     if (e.target.nodeName === "FIGCAPTION" && e.key === "Enter") {   // a caption is one line: Enter moves on
       e.preventDefault();
@@ -1014,6 +1142,7 @@
       if (cmd) { e.preventDefault(); runCmd(cmd); return; }
     }
     if (mod || e.altKey) return;
+    if ((e.key === "Backspace" || e.key === "Delete") && deleteKey(e)) return;
     // typing shortcuts: marker then a space
     if (e.key === " ") {
       ci = caretInfo();
@@ -1098,13 +1227,10 @@
     imgBar.hidden = false; placeImgBar();
     if (focusIt) $("img-alt").focus({ preventScroll: true });
   }
-  function removeFigure(fig) {
-    pushUndo();
-    if (curFig === fig) hideImgBar(false);
-    fig.remove();
-    wmsg("Image removed."); afterEdit(); body.focus({ preventScroll: true });
-  }
+  function removeFigure(fig) { dropBlock(fig, "Image removed."); }
   body.addEventListener("click", function (e) {
+    var nb = e.target.closest ? e.target.closest(".mk-stars, .mk-embed") : null;
+    if (nb && nb.parentNode === body) nb.focus({ preventScroll: true });   // selected: Backspace or Delete removes it
     var fig = e.target.closest ? e.target.closest("figure.mk-fig") : null;
     if (fig && !e.target.closest("figcaption")) showImgBar(fig, false);
     else if (!fig) hideImgBar(false);

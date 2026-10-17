@@ -29,7 +29,7 @@
   RPB.stars = function () {
     var d = el("div", "mk-stars"), s = el("span", null, "* * *");
     d.setAttribute("role", "separator"); d.setAttribute("aria-label", "section break"); s.setAttribute("aria-hidden", "true");
-    d.contentEditable = "false";
+    d.contentEditable = "false"; d.tabIndex = 0;   // focusable: click it (or Tab to it), then Backspace or Delete removes it
     d.appendChild(s);
     return d;
   };
@@ -43,7 +43,8 @@
     return pre;
   };
   RPB.videoCard = function (v) {
-    var n = el("div", "mk-embed"); n.contentEditable = "false";
+    var n = el("div", "mk-embed"); n.contentEditable = "false"; n.tabIndex = 0;
+    n.setAttribute("role", "group"); n.setAttribute("aria-label", "Video. Press Delete to remove it.");
     n.setAttribute("data-kind", "video"); n.setAttribute("data-url", v.canonical);
     var sc = el("div", "screen"); sc.appendChild(el("div", "tri")); n.appendChild(sc);
     var cap = el("div", "cap");
@@ -57,7 +58,8 @@
     var url;
     try { url = new URL(u); } catch (e) { return null; }
     if (!URL_RE.test(u)) return null;
-    var n = el("div", "mk-embed"); n.contentEditable = "false";
+    var n = el("div", "mk-embed"); n.contentEditable = "false"; n.tabIndex = 0;
+    n.setAttribute("role", "group"); n.setAttribute("aria-label", "Link card. Press Delete to remove it.");
     n.setAttribute("data-kind", "link"); n.setAttribute("data-url", u);
     var cap = el("div", "cap solo");
     cap.appendChild(el("b", null, url.hostname));
