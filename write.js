@@ -1,7 +1,14 @@
 /* rumi-pulp — the writing desk (owner only): editor, drafts and the publish screen */
 (function () {
   "use strict";
-  var RP = window.RP, RPO = window.RPO, RPB = window.RPB, $ = RP.$, el = RP.el, store = RP.store;
+  var RP = window.RP, RPO = window.RPO, RPB = window.RPB;
+  if (!RP || !RPO || !RPB) {   // one of the script files did not load (or an old copy is cached)
+    var gm = document.getElementById("gate-msg"), gt = document.getElementById("gate");
+    if (gm) gm.textContent = "The editor couldn't load all its parts. Reload the page.";
+    if (gt) gt.hidden = false;
+    return;
+  }
+  var $ = RP.$, el = RP.el, store = RP.store;
 
   if (!RP.isOwner) {
     if (location.protocol === "file:") $("gate-msg").textContent = "Run node serve.js and open http://localhost:4321/stories.html";
@@ -15,8 +22,8 @@
   // editSlug + postId: the published post this draft replaces. partial: that post was left half updated.
   // partialSlug/Id/Date: files of a failed first publish that could not be cleaned up.
   var DRAFT = { id: null, existed: false, editSlug: null, postId: "", editDate: null, partial: false, partialSlug: null, partialId: "", partialDate: null, fromSlug: null };
-  var NOTES = {}, noteSeq = 0, openNoteId = null, noteNew = false;
-  var goal = 800, versions = [], lastSig = "", curFig = null, openedPanel = null, focusMode = false, target = null, view = "write";
+  var NOTES = {}, noteSeq = 0, openNoteId = null, noteNew = false, noteStep = null;
+  var goal = 800, curFig = null, target = null, view = "write";
   var S = { displayTitle: "", displaySubtitle: "", dispTouched: false, tags: [], dropCap: false, visibility: "public", schedOn: false, schedDate: "", schedTime: "21:00", canonical: "", preview: null };
   var finished = false, publishing = false, loading = true, dirty = false, saveT = null, urlCache = {}, picker = null;
   var MAX_IMAGE = 8 * 1024 * 1024;
@@ -37,8 +44,10 @@
   }
 
   ["wr-title", "wr-sub"].forEach(function (id) {
-    $(id).addEventListener("input", function () { fit(this); touched(); });
+    $(id).addEventListener("input", function () { fit(this); recordTyping(); touched(); });
+    $(id).addEventListener("beforeinput", function (e) { onBeforeInput(e, id === "wr-title" ? "title" : "sub"); });
     $(id).addEventListener("keydown", function (e) {
+      if (historyKey(e)) return;
       if (e.key === "Enter") {
         e.preventDefault();
         if (id === "wr-title") $("wr-sub").focus();
@@ -96,9 +105,6 @@
     var pi = st.previewImage;
     S.preview = RPO.isObj(pi) && pi.name && RPB.NAME_RE.test(pi.name) ? { name: pi.name } : RPO.isObj(pi) && pi.remote && RP.imageOk(pi.remote) && /^https:/.test(pi.remote) ? { remote: pi.remote } : null;
   }
-  function sig() {
-    return $("wr-title").value + "|" + $("wr-sub").value + "|" + RPB.toHtml(clean()) + "|" + JSON.stringify(NOTES);
-  }
   function usedNotes() {
     var out = {};
     qsa(body, ".mk-note").forEach(function (s) { var id = s.getAttribute("data-note-id"); if (id in NOTES && NOTES[id]) out[id] = NOTES[id]; });
@@ -108,7 +114,7 @@
     var frag = clean();
     return {
       id: DRAFT.id, title: $("wr-title").value, subtitle: $("wr-sub").value, html: RPB.toHtml(frag), notes: usedNotes(), noteSeq: noteSeq, goal: goal,
-      versions: versions, settings: settingsOut(), words: RPB.wordCount(frag), saved: new Date().toISOString(),
+      settings: settingsOut(), words: RPB.wordCount(frag), saved: new Date().toISOString(),
       editSlug: DRAFT.editSlug, postId: DRAFT.postId, editDate: DRAFT.editDate, partial: DRAFT.partial,
       partialSlug: DRAFT.partialSlug, partialId: DRAFT.partialId, partialDate: DRAFT.partialDate, fromSlug: DRAFT.fromSlug,
       _empty: !$("wr-title").value.trim() && !$("wr-sub").value.trim() && !frag.childNodes.length
@@ -120,20 +126,21 @@
     var rec = buildRecord(), empty = rec._empty;
     delete rec._empty;
     if (empty && !DRAFT.existed) { dirty = false; if (loud) wmsg("Nothing to save yet. Write something first."); return; }
+    RPO.drafts();
+    if (RPO.draftsBroken) {   // the saved drafts could not be read: nothing is written over them
+      dirty = true;
+      $("wr-saved").textContent = "Not saved";
+      wmsg(RPO.BROKEN_MSG);
+      return;
+    }
     var ok = RPO.putDraft(rec);
     if (ok && !DRAFT.existed) {
       DRAFT.existed = true;
       try { history.replaceState(null, "", "write.html?draft=" + encodeURIComponent(DRAFT.id) + location.hash); } catch (e) {}
     }
     dirty = !ok;
-    var trimmed = ok && RPO.trimmed;
-    if (trimmed) {    // keep what is on screen in line with what could be stored
-      var kept = RPO.getDraft(DRAFT.id);
-      if (kept && Array.isArray(kept.versions)) { versions = kept.versions; if ($("panel-history") && !$("panel-history").hidden) renderHistory(); }
-    }
-    $("wr-saved").textContent = ok ? "Saved draft · " + timeText(Date.now()) + (trimmed ? " (older versions removed)" : "") : "This draft couldn't be saved. Copy your text somewhere safe.";
-    if (trimmed) wmsg("Storage is full. Older saved versions were removed to save your draft.");
-    else if (!ok) wmsg("This draft couldn't be saved: your browser's storage is full or blocked. Copy your text somewhere safe.");
+    $("wr-saved").textContent = ok ? "Saved draft · " + timeText(Date.now()) : "This draft couldn't be saved. Copy your text somewhere safe.";
+    if (!ok) wmsg("This draft couldn't be saved: your browser's storage is full or blocked. Copy your text somewhere safe.");
     else if (loud) wmsg("Draft saved.");
   }
   function touched() {
@@ -207,15 +214,210 @@
     return f;
   }
 
-  /* ═════════ undo / redo ═════════ */
-  function updateUndo() {
-    if (!body.contains(document.activeElement) && document.activeElement !== body) return;
-    try { $("b-undo").disabled = !document.queryCommandEnabled("undo"); $("b-redo").disabled = !document.queryCommandEnabled("redo"); } catch (e) {}
+  /* ═════════ undo / redo ═════════
+     The editor keeps its own history. The browser's cannot follow changes made straight to the page (typing shortcuts,
+     inserted blocks, notes, pictures), so every such change records a snapshot first and Ctrl/Cmd+Z restores it.
+     A snapshot is the story as the cleaner sees it (notes, pictures and cards kept as they are), the title, the subtitle,
+     the private notes and where the cursor was. Plain typing is grouped into steps (a pause of a second, a word end
+     after 20 characters, a different kind of edit, or moving the cursor starts a new step). */
+  var MAX_UNDO = 200, undoStack = [], redoStack = [], batch = 0;
+  var typing = { active: false, field: "", kind: "", t: 0, count: 0, node: null, off: 0 };
+
+  function topBlock(n) {
+    while (n && n !== body && n.parentNode !== body) n = n.parentNode;
+    return n && n !== body ? n : null;
   }
-  function doUndo(redo) { body.focus({ preventScroll: true }); document.execCommand(redo ? "redo" : "undo"); afterEdit(); }
+  // Cursor positions are kept as "block number + characters into the block" (a line break counts as one), which stays
+  // true even though a snapshot is rebuilt by the cleaner and its text nodes are not the same objects.
+  function linLen(x) {
+    if (x.nodeType === 3) return x.length;
+    if (x.nodeName === "BR") return 1;
+    var n = x.nodeName === "LI" ? 1 : 0;   // the end of a list item counts too, so the start of the next item is a different place
+    for (var c = x.firstChild; c; c = c.nextSibling) n += linLen(c);
+    return n;
+  }
+  function linPoint(node, off) {
+    var kids = body.children, blk, n = 0, found = false;
+    if (!kids.length) return null;
+    if (node === body) { var at = Math.min(off, kids.length - 1); return { b: at, o: off > kids.length - 1 ? linLen(kids[at]) : 0 }; }
+    blk = topBlock(node);
+    if (!blk || blk.nodeType !== 1) return null;   // loose text directly in the story has no block number
+    (function walk(x) {
+      if (found) return;
+      if (x === node) {
+        if (x.nodeType === 3) n += off;
+        else for (var i = 0, k = x.firstChild; k && i < off; i++, k = k.nextSibling) n += linLen(k);
+        found = true; return;
+      }
+      if (x.nodeType === 3) { n += x.length; return; }
+      if (x.nodeName === "BR") { n += 1; return; }
+      for (var c = x.firstChild; c && !found; c = c.nextSibling) walk(c);
+      if (!found && x.nodeName === "LI") n += 1;
+    })(blk);
+    return { b: Array.prototype.indexOf.call(kids, blk), o: n };
+  }
+  function pointAt(p) {
+    var kids = body.children, hit = null, rem;
+    if (!p || !(p.b >= 0) || !kids.length) return null;
+    var blk = kids[Math.min(p.b, kids.length - 1)];
+    rem = p.b > kids.length - 1 ? Infinity : p.o;
+    (function walk(x) {
+      if (hit) return;
+      if (x.nodeType === 3) { if (rem <= x.length) hit = { node: x, off: rem }; else rem -= x.length; return; }
+      if (x.nodeName === "BR") { if (rem <= 0 || (rem === 1 && !x.nextSibling && !x.previousSibling)) hit = { node: x.parentNode, off: Array.prototype.indexOf.call(x.parentNode.childNodes, x) }; else rem -= 1; return; }
+      for (var c = x.firstChild; c && !hit; c = c.nextSibling) walk(c);
+      if (!hit && x.nodeName === "LI") rem -= 1;
+    })(blk);
+    if (hit) return hit;
+    var end = blk;
+    while (end.lastChild && end.lastChild.nodeType === 1 && end.lastChild.nodeName !== "BR") end = end.lastChild;
+    return { node: end, off: end.childNodes.length };
+  }
+  function caretNow() {
+    var s = window.getSelection();
+    if (!s.rangeCount) return null;
+    var r = s.getRangeAt(0);
+    if (!body.contains(r.startContainer) || !body.contains(r.endContainer)) return null;
+    var a = linPoint(r.startContainer, r.startOffset), z = linPoint(r.endContainer, r.endOffset);
+    return a && z ? { s: a, e: z } : null;
+  }
+  // spaceAt: a text position where the browser has not yet put the space that a typing shortcut swallows; the snapshot includes it,
+  // so that undoing "# " gives back "# " as written.
+  function takeSnap(spaceAt) {
+    var ae = document.activeElement, field = ae === $("wr-title") ? "title" : ae === $("wr-sub") ? "sub" : "body", caret = null, sn, plus1 = spaceAt && spaceAt.node.nodeType === 3;
+    if (field === "body") caret = caretNow();
+    if (plus1) spaceAt.node.insertData(spaceAt.off, " ");
+    try { sn = { html: RPB.toHtml(RPB.cleanBlocks(body, { keep: true })) }; }
+    finally { if (plus1) spaceAt.node.deleteData(spaceAt.off, 1); }
+    if (plus1 && caret) { caret.s.o += 1; caret.e.o += 1; }
+    sn.title = $("wr-title").value; sn.subtitle = $("wr-sub").value;
+    sn.notes = JSON.stringify(NOTES); sn.caret = caret; sn.field = field;
+    sn.ts = field === "body" ? 0 : ae.selectionStart; sn.te = field === "body" ? 0 : ae.selectionEnd;
+    sn.ck = JSON.stringify(caret);
+    return sn;
+  }
+  function sameSnap(a, b) {
+    return a.html === b.html && a.title === b.title && a.subtitle === b.subtitle && a.notes === b.notes && a.field === b.field && a.ck === b.ck && a.ts === b.ts && a.te === b.te;
+  }
+  function updateUndo() {
+    [["b-undo", undoStack], ["b-redo", redoStack]].forEach(function (x) {
+      var b = $(x[0]), off = !x[1].length;
+      b.disabled = off; b.setAttribute("aria-disabled", String(off));
+    });
+  }
+  function resetUndo() { undoStack.length = 0; redoStack.length = 0; typing.active = false; updateUndo(); }
+  // Records the story as it is now, before a change. Returns the snapshot, or null when nothing was recorded.
+  function pushUndo(spaceAt) {
+    if (loading || batch) return null;
+    typing.active = false;
+    redoStack.length = 0;
+    var sn = takeSnap(spaceAt), top = undoStack[undoStack.length - 1];
+    if (top && sameSnap(top, sn)) sn = null;
+    else { undoStack.push(sn); if (undoStack.length > MAX_UNDO) undoStack.shift(); }
+    updateUndo();
+    return sn;
+  }
+  // Records a snapshot, then runs a change that goes through the browser's editing commands (whose own events must not record more).
+  function edit(fn, spaceAt) {
+    pushUndo(spaceAt);
+    batch++;
+    try { return fn(); } finally { batch--; }
+  }
+  function restoreSnap(sn) {
+    var hadFocus = body.contains(document.activeElement), ta;
+    batch++;
+    try {
+      hideBar(); hideImgBar(false); closeInserter(false); target = null;
+      openNoteId = null; notePop.hidden = true;
+      $("wr-title").value = sn.title; $("wr-sub").value = sn.subtitle; fitAll();
+      NOTES = JSON.parse(sn.notes);
+      Object.keys(NOTES).forEach(function (id) { var n = Number(id.slice(1)); if (n > noteSeq) noteSeq = n; });
+      setBody(RPB.fromHtml(sn.html, { keep: true }));
+      try {   // putting the cursor back must never stop the restore itself
+        if (sn.field !== "body") {
+          ta = $(sn.field === "title" ? "wr-title" : "wr-sub");
+          ta.focus({ preventScroll: true });
+          ta.setSelectionRange(sn.ts, sn.te);
+        } else {
+          var a = sn.caret && pointAt(sn.caret.s), z = sn.caret && pointAt(sn.caret.e), ok = a && z && editableAt(a) && editableAt(z);
+          if (ok || hadFocus) {
+            body.focus({ preventScroll: true });
+            var r = document.createRange(), s = window.getSelection();
+            if (ok) { r.setStart(a.node, a.off); r.setEnd(z.node, z.off); }
+            else { r.selectNodeContents(body.lastElementChild); r.collapse(true); }
+            s.removeAllRanges(); s.addRange(r);
+            var blk = topBlock(r.startContainer), rc = blk && blk.getBoundingClientRect();
+            if (rc && (rc.bottom < 0 || rc.top > window.innerHeight)) blk.scrollIntoView({ block: "center" });
+          }
+        }
+      } catch (e) { /* the cursor stays wherever the browser put it */ }
+      afterEdit();
+    } finally { batch--; }
+    typing.active = false;
+  }
+  function editableAt(pt) { var n = pt.node.nodeType === 3 ? pt.node.parentNode : pt.node; return !!n && n.isContentEditable; }
+  // What can be seen: the same title, subtitle, story and notes (the trailing empty line and the cursor do not count).
+  function visSame(a, b) { return a.html === b.html && a.title === b.title && a.subtitle === b.subtitle && a.notes === b.notes; }
+  // Goes one visible step from one stack to the other. Steps that would change nothing on screen (such as Enter at the end
+  // of the story) are passed over and moved to the other stack too, so undo and redo stay in step.
+  function step(from, to) {
+    if (!from.length) return;
+    var cur = takeSnap(), skipped = [], sn = null;
+    while (from.length) { sn = from.pop(); if (!visSame(sn, cur)) break; skipped.push(sn); sn = null; }
+    if (sn) {
+      to.push(cur);
+      skipped.forEach(function (x) { to.push(x); });
+      if (to.length > MAX_UNDO) to.splice(0, to.length - MAX_UNDO);
+    }
+    try { if (sn) restoreSnap(sn); }
+    finally {
+      var now = sn || cur;   // a side that holds only invisible steps counts as empty
+      [undoStack, redoStack].forEach(function (st) { if (!st.some(function (x) { return !visSame(x, now); })) st.length = 0; });
+      updateUndo();
+    }
+  }
+  function undo() { step(undoStack, redoStack); }
+  function redo() { step(redoStack, undoStack); }
+  // Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z and Ctrl+Y belong to the editor, never to the browser.
+  function historyKey(e) {
+    var k = (e.key || "").toLowerCase();
+    if (!(e.ctrlKey || e.metaKey) || e.altKey) return false;
+    if (k === "z") { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return true; }
+    if (k === "y" && e.ctrlKey && !e.shiftKey) { e.preventDefault(); redo(); return true; }
+    return false;
+  }
+  function fieldEl(f) { return f === "title" ? $("wr-title") : f === "sub" ? $("wr-sub") : null; }
+  // Called before the browser applies an edit to the story, title, subtitle or picture description.
+  function onBeforeInput(e, field) {
+    var t = e.inputType || "";
+    if (t === "historyUndo" || t === "historyRedo") { e.preventDefault(); if (t === "historyUndo") undo(); else redo(); return; }
+    if (loading || batch) return;
+    var kind = /^insert(Text|CompositionText)$/.test(t) ? "ins" : /^delete(Content|Word|SoftLine|HardLine)(Backward|Forward)$/.test(t) ? "del" : "", own = fieldEl(field);
+    var plain = !!kind;
+    if (plain && own && own.selectionStart !== own.selectionEnd) plain = false;       // replacing or deleting a selection
+    if (plain && !own && !window.getSelection().isCollapsed) plain = false;
+    if (plain && !own && kind === "del" && e.getTargetRanges) {                      // deleting across two blocks joins them
+      var tr = e.getTargetRanges()[0];
+      if (tr && topBlock(tr.startContainer) !== topBlock(tr.endContainer)) plain = false;
+    }
+    if (!plain) { pushUndo(); return; }
+    var now = Date.now(), data = e.data || "", s = window.getSelection();
+    var same = typing.active && typing.field === field && typing.kind === kind && now - typing.t <= 1000 &&
+      (own ? own.selectionStart === typing.off : s.anchorNode === typing.node && s.anchorOffset === typing.off);
+    if (same && typing.count >= 20 && /^\s+$/.test(data)) same = false;            // a word ends after 20 or more characters
+    if (!same) { pushUndo(); typing.count = 0; }
+    typing.active = true; typing.field = field; typing.kind = kind; typing.t = now; typing.count += data.length || 1;
+  }
+  // After an edit: where the cursor is now, so the next keystroke can tell whether it moved away.
+  function recordTyping() {
+    if (!typing.active) return;
+    var own = fieldEl(typing.field), s = window.getSelection();
+    if (own) typing.off = own.selectionStart; else { typing.node = s.anchorNode; typing.off = s.anchorOffset; }
+  }
   ["b-undo", "b-redo"].forEach(function (id) { $(id).addEventListener("mousedown", function (e) { e.preventDefault(); }); });
-  $("b-undo").addEventListener("click", function () { doUndo(false); });
-  $("b-redo").addEventListener("click", function () { doUndo(true); });
+  $("b-undo").addEventListener("click", undo);
+  $("b-redo").addEventListener("click", redo);
+  body.addEventListener("beforeinput", function (e) { onBeforeInput(e, "body"); });
 
   // Chrome can put a new list inside the paragraph it came from; lift it out so lists sit directly in the story.
   function fixLists() {
@@ -232,7 +434,7 @@
   function afterEdit() {
     fixLists();
     ensureTrailing();
-    count(); touched(); updatePlus(); updateUndo(); renderMarks();
+    count(); touched(); updatePlus(); renderMarks(); recordTyping();
   }
   body.addEventListener("input", afterEdit);
   body.addEventListener("paste", function (e) {
@@ -240,7 +442,7 @@
     var t = (e.clipboardData || window.clipboardData).getData("text/plain");
     var s = window.getSelection();
     if (s.rangeCount && closestTag(s.anchorNode, /^FIGCAPTION$/)) t = t.replace(/\s*\r?\n\s*/g, " ");
-    document.execCommand("insertText", false, t);
+    if (t) edit(function () { document.execCommand("insertText", false, t); });
   });
 
   function curBlock() {
@@ -292,7 +494,7 @@
     body.appendChild(RPB.para(""));
   }
   function updatePlus() {
-    if (view !== "write") return;
+    if (view !== "write" || loading) return;   // not while the story is still being opened
     ensureTrailing();
     var s = window.getSelection(), b = s.rangeCount && body.contains(s.anchorNode) ? curBlock() : null;
     var last = body.lastElementChild, trail = isEmptyPara(last) ? last : null, t, idle = false;
@@ -335,6 +537,7 @@
   function commitBlock(node, kind, message, tgt) {
     tgt = tgt && tgt.parentNode === body ? tgt : target;
     if (!tgt || !tgt.parentNode) return;
+    pushUndo();
     body.insertBefore(node, tgt);
     closeInserter(false);
     body.focus({ preventScroll: true });
@@ -536,7 +739,7 @@
     if (existing) {   // already a link: remove it
       var all = document.createRange(); all.selectNodeContents(existing);
       sel0.removeAllRanges(); sel0.addRange(all);
-      document.execCommand("unlink");
+      edit(function () { document.execCommand("unlink"); });
       wmsg("Link removed.");
       return;
     }
@@ -548,7 +751,7 @@
     u = u.trim();
     if (!RPB.URL_RE.test(u)) { wmsg("Links must start with http:// or https://."); return; }
     var s = window.getSelection(); s.removeAllRanges(); s.addRange(saved);
-    document.execCommand("createLink", false, u);
+    edit(function () { document.execCommand("createLink", false, u); });
     Array.prototype.forEach.call(body.querySelectorAll("a[href]"), function (a) { a.target = "_blank"; a.rel = "noopener"; });
     wmsg("Link added.");
   }
@@ -558,10 +761,8 @@
       var rr = selRange();
       if (rr && cutsNote(rr)) { wmsg(NOTE_CUT); return; }
     }
-    if (cmd === "bold" || cmd === "italic") document.execCommand(cmd);
-    else if (cmd === "h2") toggleBlock("h2");
-    else if (cmd === "h3") toggleBlock("h3");
-    else if (cmd === "quote") toggleBlock("blockquote");
+    if (cmd === "bold" || cmd === "italic") edit(function () { document.execCommand(cmd); });
+    else if (cmd === "h2" || cmd === "h3" || cmd === "quote") edit(function () { toggleBlock(cmd === "quote" ? "blockquote" : cmd); });
     else if (cmd === "link") linkCmd();
     else if (cmd === "note") noteCmd();
     afterEdit(); updateBar();
@@ -588,6 +789,7 @@
     var b1 = blockOf(r.startContainer), b2 = blockOf(r.endContainer);
     if (!b1 || b1 !== b2 || b1.nodeName === "PRE" || b1.nodeName === "FIGCAPTION") { wmsg("A note works on words inside one paragraph."); return; }
     if (r.cloneContents().querySelector(".mk-note")) { wmsg("Part of that text already has a note."); return; }
+    noteStep = pushUndo();
     var id = "n" + (++noteSeq), span = el("span", "mk-note");
     span.setAttribute("data-note-id", id);
     span.appendChild(r.extractContents()); r.insertNode(span);
@@ -620,12 +822,15 @@
     if (mode === "save") {
       var t = $("note-text").value.trim();
       if (!t) { $("note-err").textContent = "Write a note first, or choose Cancel."; $("note-text").focus(); return; }
+      if (!noteNew && NOTES[id] !== t) pushUndo();
       NOTES[id] = t; wmsg("Private note saved. Only you can see it, and it is never published.");
     } else if (mode === "delete" || (mode === "cancel" && noteNew)) {
+      if (mode === "delete") pushUndo();
+      else if (noteStep && undoStack[undoStack.length - 1] === noteStep) { undoStack.pop(); updateUndo(); }   // the note was never made: forget the step
       unwrapNote(id); delete NOTES[id];
       if (mode === "delete") wmsg("Private note deleted.");
     }
-    openNoteId = null; notePop.hidden = true;
+    openNoteId = null; notePop.hidden = true; noteStep = null;
     renderMarks(); touched();
     var m = marks.querySelector('[data-note-id="' + id + '"]');
     if (m && mode === "save") m.focus({ preventScroll: true }); else body.focus({ preventScroll: true });
@@ -695,7 +900,7 @@
       var c = b.getAttribute("data-cmd"); if (c in st) pressed(b, st[c]);
     });
   }
-  document.addEventListener("selectionchange", function () { updateBar(); updatePlus(); updateUndo(); });
+  document.addEventListener("selectionchange", function () { updateBar(); updatePlus(); });
   window.addEventListener("scroll", function () { if (view === "write") updateBar(); if (!imgBar.hidden) placeImgBar(); if (openNoteId !== null) placeNotePop(); }, { passive: true });
   window.addEventListener("resize", function () { if (view !== "write") return; fitAll(); updatePlus(); if (!selBar.hidden) updateBar(); if (!imgBar.hidden) placeImgBar(); });
   selBar.addEventListener("mousedown", function (e) { e.preventDefault(); });
@@ -714,6 +919,7 @@
     e.preventDefault();   // only plain text may be dropped in
     var t = e.dataTransfer ? e.dataTransfer.getData("text/plain") : "";
     if (!t) return;
+    pushUndo();
     try {
       var r = null;
       if (document.caretRangeFromPoint) r = document.caretRangeFromPoint(e.clientX, e.clientY);
@@ -721,7 +927,8 @@
       if (r && body.contains(r.startContainer)) { var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); }
     } catch (err) {}
     body.focus({ preventScroll: true });
-    document.execCommand("insertText", false, t);
+    batch++;
+    try { document.execCommand("insertText", false, t); } finally { batch--; }
   });
   body.addEventListener("dragover", function (e) { if (!dragInside) e.preventDefault(); });
 
@@ -774,6 +981,7 @@
   }
   body.addEventListener("keydown", function (e) {
     var mod = e.ctrlKey || e.metaKey, k = (e.key || "").toLowerCase(), ci;
+    if (historyKey(e)) return;
     // keyboard on a picture
     if (e.target.nodeName === "FIGURE") {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); showImgBar(e.target, true); return; }
@@ -781,6 +989,7 @@
     }
     if (e.target.nodeName === "FIGCAPTION" && e.key === "Enter") {   // a caption is one line: Enter moves on
       e.preventDefault();
+      pushUndo();
       var fg = e.target.closest("figure"), nx = fg.nextElementSibling;
       if (!nx || nx.nodeName !== "P") { nx = RPB.para(""); body.insertBefore(nx, fg.nextSibling); }
       placeCaret(nx); afterEdit();
@@ -796,12 +1005,12 @@
         e.preventDefault();
         var cb = curBlock();
         if (!cb) return;
+        pushUndo();
         var nb = cb.nextElementSibling, np = isEmptyPara(cb) ? cb : isEmptyPara(nb) ? nb : null;
         if (!np) { np = RPB.para(""); body.insertBefore(np, cb.nextSibling); }
         placeCaret(np); afterEdit(); openInserter(true);
         return;
       }
-      else if (k === "z") { e.preventDefault(); doUndo(e.shiftKey); return; }
       if (cmd) { e.preventDefault(); runCmd(cmd); return; }
     }
     if (mod || e.altKey) return;
@@ -810,9 +1019,12 @@
       ci = caretInfo();
       if (ci && ci.block.nodeName === "P" && MARKERS[ci.before]) {
         e.preventDefault();
-        var s = window.getSelection(); s.removeAllRanges(); s.addRange(ci.range);
-        document.execCommand("delete");
-        applyMarker(MARKERS[ci.before]);
+        var s = window.getSelection(), kind = MARKERS[ci.before], an = s.anchorNode, ao = s.anchorOffset;
+        edit(function () {
+          s.removeAllRanges(); s.addRange(ci.range);
+          document.execCommand("delete");
+          applyMarker(kind);
+        }, { node: an, off: ao });
         afterEdit();
       }
       return;
@@ -824,22 +1036,24 @@
     var li = sel.rangeCount && sel.isCollapsed ? closestTag(sel.anchorNode, /^LI$/) : null;
     if (li && !li.textContent.trim()) {
       e.preventDefault();
-      exitList(li);
+      edit(function () { exitList(li); });
       afterEdit(); return;
     }
     // Enter on an empty quote line leaves the quote
     var bq = sel.rangeCount && sel.isCollapsed ? closestTag(sel.anchorNode, /^BLOCKQUOTE$/) : null;
-    if (bq && !bq.textContent.trim()) { e.preventDefault(); document.execCommand("formatBlock", false, "p"); afterEdit(); return; }
+    if (bq && !bq.textContent.trim()) { e.preventDefault(); edit(function () { document.execCommand("formatBlock", false, "p"); }); afterEdit(); return; }
     if (ci && ci.block.nodeName === "P") {
       var text = ci.block.textContent.trim();
       if (text === "---") {                       // new part
         e.preventDefault();
+        pushUndo();
         body.insertBefore(RPB.stars(), ci.block);
         ci.block.textContent = ""; ci.block.appendChild(document.createElement("br"));
         placeCaret(ci.block); wmsg("New part added."); afterEdit(); return;
       }
       if (text === "```") {                       // code block
         e.preventDefault();
+        pushUndo();
         var pre = RPB.codeBlock("");
         body.replaceChild(pre, ci.block); ensureTrailing(); placeCaret(pre);
         wmsg("Code block added."); afterEdit(); return;
@@ -848,7 +1062,8 @@
     var codeEl = sel.rangeCount ? closestTag(sel.anchorNode, /^PRE$/) : null;
     if (codeEl) {   // new line inside code; Enter on an empty last line leaves the code block
       e.preventDefault();
-      if (sel.isCollapsed && emptyLastLine(codeEl, sel)) exitCode(codeEl); else document.execCommand("insertLineBreak");
+      if (sel.isCollapsed && emptyLastLine(codeEl, sel)) edit(function () { exitCode(codeEl); });
+      else { onBeforeInput({ inputType: "insertText", data: " " }, "body"); batch++; try { document.execCommand("insertLineBreak"); } finally { batch--; } }
       afterEdit();
     }
   });
@@ -884,6 +1099,7 @@
     if (focusIt) $("img-alt").focus({ preventScroll: true });
   }
   function removeFigure(fig) {
+    pushUndo();
     if (curFig === fig) hideImgBar(false);
     fig.remove();
     wmsg("Image removed."); afterEdit(); body.focus({ preventScroll: true });
@@ -901,6 +1117,7 @@
     if (!b || !curFig) return;
     var size = b.getAttribute("data-size"), act = b.getAttribute("data-act");
     if (size) {
+      pushUndo();
       curFig.dataset.size = size;
       curFig.classList.toggle("wide", size === "wide"); curFig.classList.toggle("full", size === "full");
       Array.prototype.forEach.call(imgBar.querySelectorAll("button[data-size]"), function (x) { pressed(x, x === b); });
@@ -911,6 +1128,7 @@
       pickFile(function (file) {
         addImage(file).then(function (r) {
           if (!r || !fig.parentNode) return;
+          pushUndo();
           fig.dataset.name = r.name; fig.removeAttribute("data-remote"); fig.removeAttribute("data-path"); fig.removeAttribute("data-credit-name"); fig.removeAttribute("data-credit-url"); fig.classList.remove("missing");
           fig.querySelector("img").src = r.url;
           var cap = fig.querySelector("figcaption");
@@ -930,90 +1148,14 @@
   });
   $("img-alt").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); hideImgBar(true); } });
 
-  /* ═════════ history, focus mode ═════════ */
-  var PANELS = { history: ["panel-history", "b-history"] };
-  function closePanel(returnFocus) {
-    if (!openedPanel) return;
-    var o = openedPanel; openedPanel = null;
-    o.p.hidden = true; o.b.setAttribute("aria-expanded", "false");
-    if (returnFocus) {   // in focus mode the top bar is hidden, so go back to the story instead
-      if (o.b.getClientRects().length) o.b.focus(); else body.focus({ preventScroll: true });
-    }
-  }
-  function openPanel(name) {
-    closePanel(false);
-    var p = $(PANELS[name][0]), b = $(PANELS[name][1]);
-    if (name === "history") renderHistory();
-    p.hidden = false; b.setAttribute("aria-expanded", "true");
-    openedPanel = { p: p, b: b };
-    p.querySelector("[data-close]").focus({ preventScroll: true });
-  }
-  Object.keys(PANELS).forEach(function (name) {
-    $(PANELS[name][1]).addEventListener("click", function () {
-      if (openedPanel && openedPanel.b === this) closePanel(true); else openPanel(name);
-    });
-    $(PANELS[name][0]).querySelector("[data-close]").addEventListener("click", function () { closePanel(true); });
-  });
-
-  function snapshot(label) {
-    var frag = clean();
-    lastSig = sig();
-    versions.unshift({
-      t: new Date().toISOString(), label: label, words: RPB.wordCount(frag),
-      title: $("wr-title").value, sub: $("wr-sub").value, notes: usedNotes(), html: RPB.toHtml(frag)
-    });
-    if (versions.length > 20) versions.length = 20;
-    renderHistory();
-    touched();
-  }
-  function renderHistory() {
-    var list = $("hist-list"); list.textContent = "";
-    if (!versions.length) list.appendChild(el("li", null, "No saved versions yet."));
-    versions.forEach(function (v) {
-      var li = el("li"), t = timeText(v.t);
-      li.appendChild(el("span", null, t + " · " + num(v.words) + " words · " + v.label));
-      var b = el("button", "btn small", "Restore"); b.type = "button"; b.setAttribute("aria-label", "Restore the version from " + t);
-      b.addEventListener("click", function () { restore(v); });
-      li.appendChild(b); list.appendChild(li);
-    });
-  }
-  function restore(v) {
-    if (!window.confirm("Replace the story with the version from " + timeText(v.t) + "? Your current text is saved as a new version first.")) return;
-    snapshot("before restore");
-    hideImgBar(false);
-    $("wr-title").value = v.title || ""; $("wr-sub").value = v.sub || ""; fitAll();
-    NOTES = Object.assign({}, v.notes || {}); openNoteId = null; notePop.hidden = true;
-    Object.keys(NOTES).forEach(function (id) { var n = Number(id.slice(1)); if (n > noteSeq) noteSeq = n; });
-    target = null;
-    setBody(RPB.fromHtml(v.html || ""));
-    afterEdit(); lastSig = sig();
-    closePanel(false); body.focus({ preventScroll: true });
-    wmsg("Restored the version from " + timeText(v.t) + ".");
-  }
-  $("hist-save").addEventListener("click", function () { snapshot("saved by you"); wmsg("Version saved."); });
-  setInterval(function () { if (view === "write" && !loading && !finished && sig() !== lastSig) snapshot("saved automatically"); }, 60000);
-
-  function setFocus(on) {
-    if (on === focusMode) return;
-    focusMode = on;
-    document.body.classList.toggle("mk-focus", on);
-    renderMarks();
-    $("b-focus").setAttribute("aria-pressed", String(on));
-    if (on) { closePanel(false); hideBar(); hideImgBar(false); body.focus({ preventScroll: true }); wmsg("Focus mode is on. Press Escape to leave it."); }
-    else { wmsg("Focus mode is off."); $("b-focus").focus({ preventScroll: true }); }
-  }
-  $("b-focus").addEventListener("click", function () { setFocus(!focusMode); });
-  $("focus-exit").addEventListener("click", function () { setFocus(false); });
-
+  /* ═════════ leaving things with Escape ═════════ */
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape" || view !== "write") return;
     if (openNoteId !== null) { if (!noteDirty() || window.confirm("Discard this note?")) closeNote("cancel"); return; }
     if (!$("goal-form").hidden) { closeGoal(false); return; }
-    if (openedPanel) { e.preventDefault(); closePanel(true); return; }
     if (!imgBar.hidden) { hideImgBar(true); return; }
     if (!selBar.hidden) { hideBar(); body.focus({ preventScroll: true }); var s = window.getSelection(); if (s.rangeCount && body.contains(s.anchorNode)) s.collapseToEnd(); return; }
     if (insOpen() || !photos.hidden) { closeInserter(true); return; }
-    if (focusMode) setFocus(false);
   });
 
   /* ═════════ publish screen ═════════ */
@@ -1251,17 +1393,18 @@
     noteSeq = Number(rec.noteSeq) || 0;
     Object.keys(NOTES).forEach(function (id) { var n = Number(id.slice(1)); if (n > noteSeq) noteSeq = n; });
     goal = Number.isInteger(rec.goal) && rec.goal >= 1 && rec.goal <= 100000 ? rec.goal : 800;
-    versions = (Array.isArray(rec.versions) ? rec.versions : []).filter(function (v) { return RPO.isObj(v) && typeof v.html === "string" && v.t; }).slice(0, 20);
     applySettings(RPO.isObj(rec.settings) ? rec.settings : { tags: parseTagString(rec.tags) });
     var frag;
     if (typeof rec.html === "string") frag = RPB.fromHtml(rec.html);
     else if (typeof rec.body === "string") frag = RPB.fromMarkdown(rec.body);   // text saved as markdown: rendered into the editor once
     else frag = document.createDocumentFragment();
     setBody(frag);
+    resetUndo();
   }
   function newStory() {
     DRAFT.id = RPO.newId();
     setBody(document.createDocumentFragment());
+    resetUndo();
   }
   async function openPublished(slug) {
     wmsg("Opening the story…");
@@ -1300,7 +1443,7 @@
     $("view-write").hidden = h !== "write";
     $("view-publish").hidden = h !== "publish";
     hideBar(); hideInserter();
-    if (h !== "write") { setFocus(false); closePanel(false); hideImgBar(false); if (openNoteId !== null) closeNote("cancel"); }
+    if (h !== "write") { hideImgBar(false); if (openNoteId !== null) closeNote("cancel"); }
     if (h === "write") { fitAll(); count(); renderMarks(); updatePlus(); document.title = "Write a story — rumi-pulp"; }
     if (h === "publish") { persist(false); enterPublish(); document.title = "Publish — rumi-pulp"; }
     if (changed) {
@@ -1315,7 +1458,7 @@
     if (did) {
       var rec = RPO.ID_RE.test(did) ? RPO.getDraft(did) : null;
       if (rec) loadRecord(rec);
-      else { newStory(); wmsg("That draft wasn't found, so this is a new story."); }
+      else { newStory(); wmsg(RPO.draftsBroken ? RPO.BROKEN_MSG : "That draft wasn't found, so this is a new story."); }
     } else if (slug && RPO.validSlug(slug)) {
       var ex = RPO.drafts().filter(function (d) { return d.editSlug === slug; })[0];
       if (ex) {
@@ -1326,9 +1469,6 @@
     } else newStory();
     ensureTrailing();
     count();
-    lastSig = sig();
-    if (!versions.length && body.children.length > 1) snapshot("opened");
-    renderHistory();
     loading = false;
     $("wr-saved").textContent = DRAFT.existed ? "Opened draft" : "Not saved yet";
     route();

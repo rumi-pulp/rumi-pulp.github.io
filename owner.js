@@ -27,35 +27,43 @@
   /* ── drafts (localStorage "rp:drafts") ── */
   var DKEY = "rp:drafts";
   RPO.newId = function () { return "d" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); };
+  // When the saved drafts cannot be read, nothing may be written over them: they are copied to a backup key and saving is paused.
+  RPO.draftsBroken = false;
+  RPO.BROKEN_MSG = "Your saved drafts couldn't be read, so saving is paused to protect them. A backup copy was kept.";
+  var BACKUP_RE = /^rp:drafts-backup-[0-9]+$/;
+  function keepBackup(raw) {   // only the latest backup of unreadable drafts is kept
+    var keys = [], i, k;
+    try { for (i = 0; i < localStorage.length; i++) { k = localStorage.key(i); if (k && BACKUP_RE.test(k)) keys.push(k); } } catch (e) { return; }
+    if (keys.some(function (x) { return store.get(x) === raw; })) return;
+    var key = "rp:drafts-backup-" + Date.now();
+    if (store.set(key, raw)) keys.forEach(function (x) { try { localStorage.removeItem(x); } catch (e) {} });
+  }
   RPO.drafts = function () {
-    try {
-      var l = JSON.parse(store.get(DKEY) || "[]");
-      return Array.isArray(l) ? l.filter(function (d) { return isObj(d) && typeof d.id === "string" && d.id; }) : [];
-    } catch (e) { return []; }
-  };
-  // If the browser's storage is full, old saved versions are the first thing to go.
-  // RPO.trimmed is true after a save that only fit once older saved versions were dropped (callers tell the writer).
-  RPO.trimmed = false;
-  RPO.writeDrafts = function (list) {
-    RPO.trimmed = false;
-    if (store.set(DKEY, JSON.stringify(list))) return true;
-    var keeps = [10, 5, 2, 0];
-    for (var k = 0; k < keeps.length; k++) {
-      var trimmed = list.map(function (d) {
-        if (!Array.isArray(d.versions) || d.versions.length <= keeps[k]) return d;
-        return Object.assign({}, d, { versions: d.versions.slice(0, keeps[k]) });
-      });
-      if (store.set(DKEY, JSON.stringify(trimmed))) { RPO.trimmed = true; return true; }
+    var raw = store.get(DKEY), all = null;
+    RPO.draftsBroken = false;
+    if (raw === null || raw === "") return [];
+    try { all = JSON.parse(raw); } catch (e) { all = null; }
+    if (!Array.isArray(all)) { RPO.draftsBroken = true; keepBackup(raw); return []; }
+    // Older drafts carry saved versions. That feature is gone, so they are dropped to free the browser's storage,
+    // after the drafts as they were are copied once to "rp:drafts-backup-versions" (which is kept).
+    if (all.some(function (d) { return isObj(d) && "versions" in d; })) {
+      var bk = "rp:drafts-backup-versions";
+      if (store.get(bk) !== null || store.set(bk, raw)) {
+        all.forEach(function (d) { if (isObj(d)) delete d.versions; });
+        store.set(DKEY, JSON.stringify(all));
+      }
     }
-    return false;
+    return all.filter(function (d) { return isObj(d) && typeof d.id === "string" && d.id; });
   };
+  RPO.writeDrafts = function (list) { return RPO.draftsBroken ? false : store.set(DKEY, JSON.stringify(list)); };
   RPO.getDraft = function (id) { return RPO.drafts().filter(function (d) { return d.id === id; })[0] || null; };
   RPO.putDraft = function (rec) {
     var list = RPO.drafts(), i = list.findIndex(function (d) { return d.id === rec.id; });
+    if (RPO.draftsBroken) return false;
     if (i >= 0) list[i] = rec; else list.unshift(rec);
     return RPO.writeDrafts(list);
   };
-  RPO.removeDraft = function (id) { return RPO.writeDrafts(RPO.drafts().filter(function (d) { return d.id !== id; })); };
+  RPO.removeDraft = function (id) { var list = RPO.drafts().filter(function (d) { return d.id !== id; }); return RPO.writeDrafts(list); };
 
   /* ── IndexedDB: db "rumi-pulp", stores "handles" (the remembered folder) and "images" (draft pictures) ── */
   function openDb() {

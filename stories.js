@@ -343,6 +343,7 @@
     var q = new URLSearchParams(location.search).get("tab");
     if (TABS.some(function (t) { return t[0] === q; })) activeTab = q;
     render(false);
+    if (RPO.draftsBroken) say(RPO.BROKEN_MSG);
     checkFeed();
   });
 })();

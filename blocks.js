@@ -14,6 +14,7 @@
   RPB.NAME_RE = NAME_RE;
   RPB.URL_RE = URL_RE;
 
+  var keepMode = false;   // true while cleanBlocks runs with { keep: true }: the editor's undo snapshots keep spaces and empty quote lines exactly
   function br() { return document.createElement("br"); }
   function txt(s) { return document.createTextNode(s); }
   function each(list, fn) { Array.prototype.slice.call(list).forEach(fn); }
@@ -93,7 +94,7 @@
   }
   function inlineInto(src, dst, ctx) {
     each(src.childNodes, function (n) {
-      if (n.nodeType === 3) { dst.appendChild(txt(n.nodeValue.replace(/\u00a0/g, " ").replace(/[\u0000\u200b]/g, ""))); return; }
+      if (n.nodeType === 3) { dst.appendChild(txt((keepMode ? n.nodeValue : n.nodeValue.replace(/\u00a0/g, " ")).replace(/[\u0000\u200b]/g, ""))); return; }
       if (n.nodeType !== 1) return;
       var tag = n.nodeName, w;
       if (tag === "BR") { dst.appendChild(br()); return; }
@@ -179,7 +180,7 @@
   function blockInto(n, out, opts) {
     var tag = n.nodeName, b;
     if (n.nodeType === 3) {
-      if (n.nodeValue.trim()) { b = RPB.para(); b.textContent = n.nodeValue.replace(/\u00a0/g, " "); out.appendChild(b); }
+      if (n.nodeValue.trim()) { b = RPB.para(); b.textContent = keepMode ? n.nodeValue : n.nodeValue.replace(/\u00a0/g, " "); out.appendChild(b); }
       return;
     }
     if (n.nodeType !== 1 || SKIP.test(tag)) return;
@@ -197,8 +198,8 @@
       if (b) out.appendChild(b);
       return;
     }
-    if (tag === "H1" || tag === "H2") { b = inlineBlock("h2", n); if (b.firstChild) out.appendChild(b); return; }
-    if (/^H[3-6]$/.test(tag)) { b = inlineBlock("h3", n); if (b.firstChild) out.appendChild(b); return; }
+    if (tag === "H1" || tag === "H2") { b = inlineBlock("h2", n); if (!b.firstChild && keepMode) b.appendChild(br()); if (b.firstChild) out.appendChild(b); return; }
+    if (/^H[3-6]$/.test(tag)) { b = inlineBlock("h3", n); if (!b.firstChild && keepMode) b.appendChild(br()); if (b.firstChild) out.appendChild(b); return; }
     if (tag === "PRE") {
       out.appendChild(RPB.codeBlock(codeText(n)));
       return;
@@ -218,10 +219,12 @@
             } else inlineInto({ childNodes: [c] }, item, {});
           });
           mergeAdjacent(item);
+          if (!item.firstChild && keepMode) item.appendChild(br());   // (the editor's undo keeps empty items)
           if (item.firstChild) b.appendChild(item);
           nested.forEach(items);
         });
       })(n);
+      if (!b.firstChild && keepMode) { var li0 = el("li"); li0.appendChild(br()); b.appendChild(li0); }
       if (b.firstChild) out.appendChild(b);
       return;
     }
@@ -237,7 +240,10 @@
         });
         mergeAdjacent(b);
       } else b = inlineBlock("blockquote", n);
-      if (!b.textContent.trim()) return;   // an empty quote line is not part of the story
+      if (!b.textContent.trim()) {   // an empty quote line is not part of the story (the editor's undo keeps it)
+        if (!keepMode) return;
+        if (!b.firstChild) b.appendChild(br());
+      }
       var prevQ = out.lastChild;
       if (opts.merge && prevQ && prevQ.nodeName === "BLOCKQUOTE") {   // in the editor each Enter makes a new quote line: they read as one quote
         prevQ.appendChild(br());
@@ -263,9 +269,12 @@
     each(n.childNodes, function (c) { blockInto(c, out, opts); });
   }
   // The blocks of `src` (an element), rebuilt from the whitelist. opts.cards turns a paragraph that is only a link into a link card.
+  // opts.keep leaves spaces and empty quote lines as they are (the editor's undo snapshots must restore faithfully).
   RPB.cleanBlocks = function (src, opts) {
     var frag = document.createDocumentFragment();
-    each(src.childNodes, function (c) { blockInto(c, frag, opts || {}); });
+    keepMode = !!(opts && opts.keep);
+    try { each(src.childNodes, function (c) { blockInto(c, frag, opts || {}); }); }
+    finally { keepMode = false; }
     // the empty line the editor keeps at the end is not part of the story
     while (frag.lastChild && frag.lastChild.nodeName === "P" && !frag.lastChild.textContent.trim() && !frag.lastChild.querySelector("figure")) frag.lastChild.remove();
     return frag;
@@ -276,9 +285,9 @@
     return d.innerHTML;
   };
   // Parsed in an inert document first: nothing runs and nothing loads until it has been rebuilt from the whitelist.
-  RPB.fromHtml = function (html) {
+  RPB.fromHtml = function (html, opts) {
     var doc = new DOMParser().parseFromString("<!doctype html><body>" + String(html), "text/html");
-    return RPB.cleanBlocks(doc.body, {});
+    return RPB.cleanBlocks(doc.body, opts || {});
   };
   RPB.fromMarkdown = function (md) {
     var doc = new DOMParser().parseFromString("<!doctype html><body>" + RP.md(md), "text/html");

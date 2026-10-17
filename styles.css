@@ -254,11 +254,6 @@ main { overflow-x: clip; }
 .wr-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0 0 28px; font-size: 13px; color: var(--dim); }
 .goal-form { display: inline-flex; align-items: center; gap: 6px; }
 .goal-form .field { width: 9ch; padding: 4px 8px; }
-.wr-panel { border: 1px solid var(--rule); padding: 16px 18px; margin: 0 0 28px; }
-.panel-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px; }
-.panel-top h2.sec { margin: 0; }
-.hist { list-style: none; margin: 14px 0 0; padding: 0; font-size: 13px; }
-.hist li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid var(--rule); }
 .wr-title, .wr-sub { display: block; width: 100%; border: 0; outline: 0; background: transparent; padding: 0; resize: none; overflow: hidden; overflow-wrap: anywhere; }
 .wr-title { font-size: clamp(32px, 5.4vw, 52px); line-height: 1.1; font-weight: 800; letter-spacing: -0.03em; }
 .wr-sub { font-size: clamp(18px, 2.6vw, 22px); line-height: 1.5; color: var(--soft); margin-top: 16px; }
@@ -325,9 +320,6 @@ main { overflow-x: clip; }
 .img-bar button:hover { border-color: var(--ink); }
 .img-bar button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .img-bar label { display: block; width: 100%; color: var(--dim); }
-.mk-exit { display: none; }
-body.mk-focus .mk-exit { display: block; position: fixed; top: 12px; right: 12px; z-index: 30; background: var(--bg); }
-body.mk-focus .bar, body.mk-focus .wr-top, body.mk-focus .wr-status, body.mk-focus .wr-panel { display: none !important; }
 
 /* blocks shared by the editor and the reader */
 .mk-stars { text-align: center; color: var(--dim); letter-spacing: 0.6em; margin: 2em 0; user-select: none; }

@@ -45,15 +45,12 @@
     <!-- ═════════ write ═════════ -->
     <section id="view-write" aria-labelledby="write-h">
       <h1 class="sr-only" id="write-h" tabindex="-1">Write a story</h1>
-      <button class="btn small mk-exit" type="button" id="focus-exit">Exit focus</button>
       <div class="wr-col" id="wr-col">
         <div class="wr-top">
           <div class="wr-tools">
             <a href="stories.html">← Your stories</a>
-            <button class="btn small" type="button" id="b-undo" disabled>Undo</button>
-            <button class="btn small" type="button" id="b-redo" disabled>Redo</button>
-            <button class="btn small" type="button" id="b-focus" aria-pressed="false">Focus</button>
-            <button class="btn small" type="button" id="b-history" aria-expanded="false" aria-controls="panel-history">History</button>
+            <button class="btn small" type="button" id="b-undo" disabled aria-disabled="true">Undo</button>
+            <button class="btn small" type="button" id="b-redo" disabled aria-disabled="true">Redo</button>
           </div>
           <div class="wr-meta">
             <span id="wr-saved">Not saved yet</span>
@@ -73,12 +70,6 @@
           </span>
         </div>
 
-        <section class="wr-panel" id="panel-history" role="dialog" aria-label="Version history" hidden>
-          <div class="panel-top"><h2 class="sec">history</h2><button class="btn small" type="button" data-close>Close</button></div>
-          <p class="dim" style="margin:0 0 12px;font-size:13px">Versions are saved in your browser. A version is kept automatically every minute that something changed.</p>
-          <button class="btn small" type="button" id="hist-save">Save version now</button>
-          <ul class="hist" id="hist-list"></ul>
-        </section>
         <div class="wr">
           <textarea class="wr-title" id="wr-title" rows="1" placeholder="Title" aria-label="Title"></textarea>
           <textarea class="wr-sub" id="wr-sub" rows="1" placeholder="Add a subtitle…" aria-label="Subtitle"></textarea>
@@ -217,9 +208,9 @@
     </div>
   </main>
 
-  <script src="site.js" defer></script>
-  <script src="owner.js" defer></script>
-  <script src="blocks.js" defer></script>
-  <script src="write.js" defer></script>
+  <script src="site.js?v=3" defer></script>
+  <script src="owner.js?v=3" defer></script>
+  <script src="blocks.js?v=3" defer></script>
+  <script src="write.js?v=3" defer></script>
 </body>
 </html>
