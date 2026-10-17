@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="styles.css" />
+<link rel="alternate" type="application/rss+xml" title="rumi-pulp" href="feed.xml" />
 </head>
 <body data-page="blog">
   <header class="bar">
@@ -19,7 +20,7 @@
         <nav class="nav" aria-label="Main">
           <a href="index.html" data-nav="home">home</a>
           <a href="blog.html" data-nav="blog">blog</a>
-          <a href="write.html" data-nav="write" id="nav-write" hidden>write</a>
+          <a href="stories.html" data-nav="stories" id="nav-stories" hidden>stories</a>
         </nav>
       </div>
       <div class="bar-r">
@@ -29,14 +30,35 @@
         <button type="button" id="theme-btn" aria-label="Switch to light mode"></button>
       </div>
     </div>
+    <div class="read-progress" aria-hidden="true"><i id="progress-i"></i></div>
   </header>
 
   <main>
-    <div class="article">
+    <div class="article" id="article">
       <a class="back" href="blog.html">← All posts</a>
       <div class="meta" id="post-meta"></div>
       <h1 id="post-title" tabindex="-1">Loading…</h1>
+      <p class="sub" id="post-sub"></p>
       <div class="prose" id="post-body" aria-live="polite"></div>
+    </div>
+    <div class="after" id="post-after" hidden>
+      <div class="share">
+        <button class="btn" type="button" id="copy-link">Copy link</button>
+        <span class="msg" id="copy-msg" role="status" aria-live="polite"></span>
+      </div>
+      <div class="author">
+        <div class="who">Rumi</div>
+        <p>Creative writer based in Kuala Lumpur.</p>
+        <div class="links">
+          <a href="https://github.com/rumi-pulp/" target="_blank" rel="noopener">github</a>
+          <a href="https://medium.com/@rumi-pulp" target="_blank" rel="noopener">medium</a>
+          <a href="feed.xml">Follow via RSS</a>
+        </div>
+      </div>
+      <div id="related-wrap" hidden>
+        <h2 class="sec" id="more-h">more to read</h2>
+        <ul class="posts" id="related"></ul>
+      </div>
     </div>
     <nav class="post-foot" id="post-foot" aria-label="More posts" hidden>
       <span id="prev-wrap"></span>

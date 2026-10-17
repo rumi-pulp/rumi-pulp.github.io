@@ -13,6 +13,7 @@
   /* ── small helpers ── */
   RP.$ = $;
   RP.SLUG_RE = SLUG_RE;
+  RP.SITE = "https://rumi-pulp.github.io/";
   RP.el = function (tag, cls, text) {
     var n = document.createElement(tag);
     if (cls) n.className = cls;
@@ -40,41 +41,152 @@
     return String(s).toLowerCase().normalize("NFKD").replace(/[^\w\s-]/g, "").trim()
       .replace(/[\s_]+/g, "-").replace(/-+/g, "-").slice(0, 60).replace(/^-+|-+$/g, "");
   };
-  RP.todayKL = function () {
+
+  /* ── Kuala Lumpur time (UTC+8, no daylight saving) ── */
+  function klParts(d) {
     var o = {};
-    new Intl.DateTimeFormat("en-US", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" })
-      .formatToParts(new Date()).forEach(function (p) { o[p.type] = p.value; });
-    return o.year + "-" + o.month + "-" + o.day;
+    new Intl.DateTimeFormat("en-US", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(d || new Date()).forEach(function (p) { o[p.type] = p.value; });
+    return o;
+  }
+  RP.todayKL = function () { var o = klParts(); return o.year + "-" + o.month + "-" + o.day; };
+  // { date: "YYYY-MM-DD", time: "HH:MM" } for the current moment (or the given Date) in Kuala Lumpur
+  RP.klNow = function (d) {
+    var o = klParts(d);
+    return { date: o.year + "-" + o.month + "-" + o.day, time: o.hour + ":" + o.minute };
+  };
+  RP.klIso = function (date, time) { return date + "T" + time + ":00+08:00"; };
+  RP.klDateOf = function (iso) { var t = Date.parse(iso); return isNaN(t) ? "" : RP.klNow(new Date(t)).date; };
+  // "24 Oct 2026, 9:00 PM KL"
+  RP.klLabel = function (iso) {
+    var t = Date.parse(iso);
+    if (isNaN(t)) return "";
+    var n = RP.klNow(new Date(t)), hh = +n.time.slice(0, 2);
+    return RP.niceDate(n.date) + ", " + ((hh + 11) % 12 + 1) + ":" + n.time.slice(3) + " " + (hh >= 12 ? "PM" : "AM") + " KL";
   };
 
-  /* ── markdown: escape first, then add a few tags. Links are http/https only. ── */
+  /* ── video links: only YouTube and Vimeo can be embedded ── */
+  RP.parseVideo = function (url) {
+    var u = String(url).trim(), m;
+    if ((m = /^https?:\/\/(?:www\.|m\.)?youtube(?:-nocookie)?\.com\/(?:watch\?(?:[^#\s]*&)?v=|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/.exec(u)) ||
+        (m = /^https?:\/\/youtu\.be\/([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])/.exec(u))) {
+      return { kind: "youtube", label: "YouTube", id: m[1], embed: "https://www.youtube-nocookie.com/embed/" + m[1], canonical: "https://www.youtube.com/watch?v=" + m[1] };
+    }
+    if ((m = /^https?:\/\/(?:www\.)?vimeo\.com\/(\d{1,12})(?!\d)/.exec(u)) ||
+        (m = /^https?:\/\/player\.vimeo\.com\/video\/(\d{1,12})(?!\d)/.exec(u))) {
+      return { kind: "vimeo", label: "Vimeo", id: m[1], embed: "https://player.vimeo.com/video/" + m[1], canonical: "https://vimeo.com/" + m[1] };
+    }
+    return null;
+  };
+
+  /* ── markdown: escape first, then add a few tags. Links are http/https only, images and videos are allow-listed. ── */
   function esc(s) {
     return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
   function emphasis(s) {
-    s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-    return s.replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+    var bold = function (t) { return t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>"); };
+    s = bold(s).replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
+    return bold(s);   // a second pass catches bold around italic: **a *b* c**
   }
-  // Code spans and links become placeholder tokens first, so emphasis can't reach inside code or URLs.
+  // Escapes, code spans and links become placeholder tokens first, so emphasis can't reach inside code or URLs.
   function inline(s) {
     var tokens = [];
     function keep(html) { tokens.push(html); return "\u0000" + (tokens.length - 1) + "\u0000"; }
-    s = esc(s).replace(/\u0000/g, "");
-    s = s.replace(/`([^`]+)`/g, function (_, c) { return keep("<code>" + c + "</code>"); });
-    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, function (_, text, url) {
+    s = String(s).replace(/\u0000/g, "");
+    // one left-to-right pass: a backslash before a special character makes it plain text; `code` is kept as typed
+    // (a code span may use a longer backtick fence, so code can hold backticks; one padding space on each side is dropped)
+    s = s.replace(/\\([\\*`\[\]#>\-.!@])|(`+)([^`]|[^`][\s\S]*?[^`])\2(?!`)/g, function (_, c, fence, code) {
+      if (c) return keep(esc(c));
+      if (/^ [\s\S]* $/.test(code) && code.trim()) code = code.slice(1, -1);
+      return keep("<code>" + esc(code) + "</code>");
+    });
+    s = esc(s);
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/(?:[^()\s]|\([^()\s]*\))+)\)/g, function (_, text, url) {
       return keep('<a href="' + url + '" target="_blank" rel="noopener">' + emphasis(text) + "</a>");
     });
     s = emphasis(s);
     while (/\u0000\d+\u0000/.test(s)) s = s.replace(/\u0000(\d+)\u0000/g, function (_, i) { return tokens[+i]; });
     return s;
   }
+  // a line holding only a backslash is an empty line inside a paragraph (two line breaks in a row)
+  function lines2html(s) { return inline(s.replace(/(^|\n)\\(?=\n|$)/g, "$1")).replace(/\n/g, "<br>"); }
+
+  // Pictures: a path inside this site (images/<slug>/<file>) or an Unsplash photo. Nothing else.
+  var IMG_REL = /^images\/[a-z0-9]+(?:-[a-z0-9]+)*\/[A-Za-z0-9][A-Za-z0-9._-]*\.(?:jpe?g|png|webp|gif)$/i;
+  var IMG_UNS = /^https:\/\/images\.unsplash\.com\/[A-Za-z0-9._~:\/?#@!$&*+,;=%-]*$/;
+  RP.imageOk = function (src) { return IMG_REL.test(src) || IMG_UNS.test(src); };
+  RP.IMG_REL = IMG_REL;
+
+  var FIG_RE = /^!\[([^\]]*)\]\(([^)\s"]+)(?:\s+"([^"]*)")?\)(?:\{\.(wide|full)\})?\s*$/;
+  var VIDEO_RE = /^@\[video\]\((https?:\/\/[^)\s]+)\)\s*$/;
+  var UL_RE = /^[-*]\s+/, OL_RE = /^\d+\.\s+/;
+
+  function figure(m) {
+    var src = m[2];
+    if (!RP.imageOk(src)) return null;
+    // post files live in posts/, pages in the site root: images/... is resolved from posts/
+    var url = IMG_REL.test(src) ? "posts/" + src : src;
+    var cap = m[3] ? "<figcaption>" + inline(m[3]) + "</figcaption>" : "";
+    return '<figure class="mk-fig' + (m[4] ? " " + m[4] : "") + '"><img src="' + esc(url) + '" alt="' + esc(m[1]) + '" loading="lazy" decoding="async">' + cap + "</figure>";
+  }
+  function video(url) {
+    var v = RP.parseVideo(url);
+    if (!v) return '<p><a href="' + esc(url) + '" target="_blank" rel="noopener">' + esc(url) + "</a></p>";
+    return '<div class="mk-video" data-url="' + esc(v.canonical) + '"><iframe src="' + v.embed + '" title="' + v.label + ' video" loading="lazy" ' +
+      'allow="accelerometer; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>';
+  }
+
   function md(src) {
-    return String(src).replace(/\r/g, "").split(/\n{2,}/).filter(function (b) { return b.trim(); }).map(function (b) {
-      b = b.replace(/^\n+|\n+$/g, "");
-      if (/^#{1,3}\s+/.test(b)) return "<h2>" + inline(b.replace(/^#{1,3}\s+/, "")) + "</h2>";
-      if (/^>\s?/.test(b)) return "<blockquote>" + inline(b.replace(/^>\s?/gm, "")).replace(/\n/g, "<br>") + "</blockquote>";
-      return "<p>" + inline(b).replace(/\n/g, "<br>") + "</p>";
-    }).join("");
+    var lines = String(src).replace(/\r/g, "").split("\n"), out = [], i = 0, m;
+    while (i < lines.length) {
+      var line = lines[i];
+      if (!line.trim()) { i++; continue; }
+
+      if ((m = /^(`{3,})[^`]*$/.exec(line.replace(/\s+$/, "")))) {         // fenced code (escaped, not highlighted)
+        var closer = new RegExp("^`{" + m[1].length + ",}\\s*$"), buf = [];
+        i++;
+        while (i < lines.length && !closer.test(lines[i])) buf.push(lines[i++]);
+        i++;
+        out.push('<pre class="mk-code">' + (buf.length && buf[0] === "" ? "\n" : "") + esc(buf.join("\n")) + "</pre>");
+        continue;
+      }
+      if (/^-{3,}\s*$/.test(line)) {                                       // section break
+        out.push('<div class="mk-stars" role="separator" aria-label="section break"><span aria-hidden="true">* * *</span></div>');
+        i++; continue;
+      }
+      if ((m = /^(#{1,3})\s+(.*)$/.exec(line))) {                          // # and ## are headings, ### a subheading
+        var tag = m[1].length === 3 ? "h3" : "h2";
+        out.push("<" + tag + ">" + inline(m[2].trim()) + "</" + tag + ">");
+        i++; continue;
+      }
+      if ((m = FIG_RE.exec(line))) {
+        var f = figure(m);
+        if (f) { out.push(f); i++; continue; }
+      }
+      if ((m = VIDEO_RE.exec(line))) { out.push(video(m[1])); i++; continue; }
+
+      var buf2 = [];
+      if (/^>/.test(line)) {                                               // quote: the whole block, as before
+        while (i < lines.length && lines[i].trim()) buf2.push(lines[i++].replace(/^>\s?/, ""));
+        out.push("<blockquote>" + lines2html(buf2.join("\n").replace(/^\n+|\n+$/g, "")) + "</blockquote>");
+        continue;
+      }
+      var kind = UL_RE.test(line) ? "ul" : OL_RE.test(line) ? "ol" : null;
+      if (kind) {                                                           // list: items, with indented continuation lines
+        var re = kind === "ul" ? UL_RE : OL_RE, items = [];
+        while (i < lines.length && lines[i].trim()) {
+          if (re.test(lines[i])) items.push(lines[i].replace(re, "").trim());
+          else if (/^\s{2,}\S/.test(lines[i]) && items.length) items[items.length - 1] += "\n" + lines[i].trim();
+          else break;
+          i++;
+        }
+        out.push("<" + kind + ">" + items.map(function (t) { return "<li>" + lines2html(t) + "</li>"; }).join("") + "</" + kind + ">");
+        continue;
+      }
+      while (i < lines.length && lines[i].trim()) buf2.push(lines[i++]);   // paragraph
+      out.push("<p>" + lines2html(buf2.join("\n").replace(/^\n+|\n+$/g, "")) + "</p>");
+    }
+    return out.join("");
   }
   RP.esc = esc;
   RP.md = md;
@@ -84,8 +196,20 @@
     return list.slice().sort(function (a, b) {
       var ad = String(a.date || ""), bd = String(b.date || "");
       if (ad !== bd) return ad < bd ? 1 : -1;
+      var at = String(a.publishAt || ""), bt = String(b.publishAt || "");
+      if (at !== bt) return at < bt ? 1 : -1;
       return String(a.title).localeCompare(String(b.title));
     });
+  };
+  function nowMs(now) { return now instanceof Date ? now.getTime() : typeof now === "number" ? now : Date.now(); }
+  function hasWhen(e) { return !!e && e.publishAt != null && e.publishAt !== ""; }
+  // Not yet due: a go-live time that is still in the future (or can't be read, which is treated the same way).
+  RP.isScheduled = function (e, now) { return hasWhen(e) && !(Date.parse(e.publishAt) <= nowMs(now)); };
+  // Shown in public lists: public, and either no go-live time or one that has passed.
+  RP.isLive = function (e, now) {
+    if (!e) return false;
+    var vis = e.visibility == null ? "public" : e.visibility;
+    return vis === "public" && !RP.isScheduled(e, now);
   };
   // Raw manifest: the validated array exactly as stored in posts/index.json.
   RP.fetchManifest = function () {
@@ -97,7 +221,9 @@
       return data;
     });
   };
-  // Clean, sorted (newest first) posts ready for display. Entries that can't be shown are skipped.
+  function str(v) { return typeof v === "string" ? v : ""; }
+  // Clean, sorted (newest first) posts ready for display, every visibility included. Entries that can't be shown are skipped.
+  // Public lists should filter with RP.isLive.
   RP.loadPosts = function () {
     return RP.fetchManifest().then(function (data) {
       var list = [];
@@ -109,13 +235,30 @@
         list.push({
           slug: e.slug,
           title: e.title.trim(),
+          subtitle: str(e.subtitle).trim(),
           date: e.date,
+          updated: typeof e.updated === "string" && DATE_RE.test(e.updated) ? e.updated : "",
+          publishAt: hasWhen(e) ? String(e.publishAt) : "",
+          visibility: e.visibility === "unlisted" ? "unlisted" : (e.visibility == null || e.visibility === "public" ? "public" : "private"),
           tags: Array.isArray(e.tags) ? e.tags.filter(function (t) { return typeof t === "string" && t.trim(); }).map(function (t) { return t.trim(); }) : [],
-          summary: typeof e.summary === "string" ? e.summary : "",
-          words: Number(e.words) > 0 ? Number(e.words) : 0
+          summary: str(e.summary),
+          words: Number(e.words) > 0 ? Number(e.words) : 0,
+          dropCap: e.dropCap === true,
+          image: str(e.image),
+          displayTitle: str(e.displayTitle).trim(),
+          displaySubtitle: str(e.displaySubtitle).trim(),
+          id: str(e.id),
+          canonical: str(e.canonical)
         });
       });
       return RP.sortPosts(list);
+    });
+  };
+  // The posts anyone can see right now.
+  RP.loadLivePosts = function () {
+    return RP.loadPosts().then(function (list) {
+      var now = Date.now();
+      return list.filter(function (p) { return RP.isLive(p, now); });
     });
   };
 
@@ -137,14 +280,14 @@
     });
   })();
 
-  /* ── status bar: active tab, write tab ── */
+  /* ── status bar: active tab, stories tab (owner only) ── */
   (function () {
     var page = document.body.getAttribute("data-page");
     Array.prototype.forEach.call(document.querySelectorAll("[data-nav]"), function (a) {
       if (a.getAttribute("data-nav") === page) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
-    var w = $("nav-write");
+    var w = $("nav-stories");
     if (w && RP.isOwner) w.hidden = false;
   })();
 

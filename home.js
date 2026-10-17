@@ -19,7 +19,7 @@
     a.href = "post.html?slug=" + encodeURIComponent(p.slug);
     var box = el("span");
     box.appendChild(el("span", "t", p.title));
-    if (p.summary) box.appendChild(el("span", "ex", p.summary));
+    if (p.subtitle || p.summary) box.appendChild(el("span", "ex", p.subtitle || p.summary));
     var meta = [RP.niceDate(p.date), RP.readTime(p.words) + " min read"];
     if (p.tags.length) meta.push(p.tags.join(", "));
     box.appendChild(el("span", "meta", meta.join(" · ")));
@@ -30,7 +30,7 @@
   (function () {
     var list = $("home-latest"), more = $("home-more");
     function note(text) { list.textContent = ""; list.appendChild(el("li", "empty", text)); more.hidden = true; }
-    RP.loadPosts().then(function (posts) {
+    RP.loadLivePosts().then(function (posts) {
       if (!posts.length) { note("Nothing published yet — the first post is on its way."); return; }
       list.textContent = "";
       posts.slice(0, 3).forEach(function (p) { list.appendChild(postItem(p)); });

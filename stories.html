@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Your stories — rumi-pulp</title>
+<meta name="robots" content="noindex" />
+<meta name="description" content="Your stories on rumi-pulp." />
+<script>try{var t=localStorage.getItem("rp:theme");document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body data-page="stories">
+  <header class="bar">
+    <div class="bar-in">
+      <div class="bar-l">
+        <a class="brand" href="index.html">rumi-pulp</a>
+        <nav class="nav" aria-label="Main">
+          <a href="index.html" data-nav="home">home</a>
+          <a href="blog.html" data-nav="blog">blog</a>
+          <a href="stories.html" data-nav="stories" id="nav-stories" hidden>stories</a>
+        </nav>
+      </div>
+      <div class="bar-r">
+        <span class="bar-st"><span class="live-dot" aria-hidden="true"></span><span class="bar-w">online</span></span>
+        <span id="bar-wx">KL …</span>
+        <span id="bar-time">--:-- --</span>
+        <button type="button" id="theme-btn" aria-label="Switch to light mode"></button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <noscript><p>This page needs JavaScript.</p></noscript>
+
+    <section class="gate" id="gate" hidden aria-labelledby="gate-h">
+      <h1 id="gate-h">Your stories</h1>
+      <p id="gate-msg">This page only works on Rumi's own computer.</p>
+      <p><a href="index.html">Back to home</a></p>
+    </section>
+
+    <section id="stories" hidden aria-labelledby="stories-h">
+      <div class="view-h">
+        <h1 class="page-h" id="stories-h" tabindex="-1">Your stories</h1>
+        <a class="btn primary" href="write.html" style="text-decoration:none">Write a story</a>
+      </div>
+      <p class="page-sub">Everything you've written, in one place.</p>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="notice" id="feed-notice" role="status" hidden></div>
+
+      <div class="st-tabs" role="tablist" aria-label="Story status" id="st-tabs"></div>
+      <div class="msg" id="st-msg" role="status" aria-live="polite"></div>
+      <div role="tabpanel" id="st-panel" aria-labelledby="tab-draft"><ul class="st-list" id="st-list"></ul></div>
+    </section>
+  </main>
+
+  <script src="site.js" defer></script>
+  <script src="owner.js" defer></script>
+  <script src="stories.js" defer></script>
+</body>
+</html>

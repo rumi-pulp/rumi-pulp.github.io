@@ -10,7 +10,7 @@
     a.appendChild(el("span", "date", RP.niceDate(p.date)));
     var box = el("span");
     box.appendChild(el("span", "t", p.title));
-    if (p.summary) box.appendChild(el("span", "ex", p.summary));
+    if (p.subtitle || p.summary) box.appendChild(el("span", "ex", p.subtitle || p.summary));
     var meta = [RP.readTime(p.words) + " min read"];
     if (p.tags.length) meta.push(p.tags.join(", "));
     box.appendChild(el("span", "meta", meta.join(" · ")));
@@ -27,7 +27,7 @@
     var list = $("listing");
     list.textContent = "";
     var hits = POSTS.filter(function (p) {
-      var hay = (p.title + " " + p.tags.join(" ") + " " + p.summary).toLowerCase();
+      var hay = (p.title + " " + p.subtitle + " " + p.tags.join(" ") + " " + p.summary).toLowerCase();
       return (!q || hay.indexOf(q) >= 0) && (!activeTag || p.tags.indexOf(activeTag) >= 0);
     });
     hits.forEach(function (p) { list.appendChild(postItem(p)); });
@@ -44,7 +44,7 @@
     $("listing-count").textContent = "";
   }
 
-  RP.loadPosts().then(function (posts) {
+  RP.loadLivePosts().then(function (posts) {
     POSTS = posts;
     if (!POSTS.length) { note("Nothing published yet."); return; }
     var tags = [];

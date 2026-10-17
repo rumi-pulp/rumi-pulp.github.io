@@ -16,6 +16,8 @@ const MIME = {
   ".json": "application/json; charset=utf-8",
   ".md": "text/markdown; charset=utf-8",
   ".svg": "image/svg+xml",
+  ".xml": "application/xml; charset=utf-8",
+  ".gif": "image/gif",
   ".png": "image/png",
   ".webp": "image/webp",
   ".jpg": "image/jpeg",
@@ -73,5 +75,5 @@ server.on("error", (err) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`rumi-pulp running at http://localhost:${PORT}  —  write at http://localhost:${PORT}/write.html`);
+  console.log(`rumi-pulp running at http://localhost:${PORT}  —  stories at http://localhost:${PORT}/stories.html`);
 });
