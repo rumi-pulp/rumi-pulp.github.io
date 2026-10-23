@@ -48,21 +48,6 @@ Each story is a markdown file in `posts/` (for example `posts/my-story.md`), wit
 stories is `posts/index.json`; the stories page keeps it, `feed.xml` and the pictures up
 to date for you.
 
-## Add a handbook chapter
-
-The handbook (`handbook.html`) is a set of chapters grouped into parts.
-
-1. Create a text file in the `handbook` folder, for example `handbook/my-chapter.md`
-   (lowercase letters, numbers and hyphens only). Write the chapter in it; `##` and `###`
-   headings become the "in this chapter" list.
-2. Open `handbook/index.json` and add a line for it under the right part, like
-   `{ "slug": "my-chapter", "title": "My chapter" }`. The slug is the file name without `.md`.
-   Chapters appear in the order listed. Optional extras: `"minutes": 4` and
-   `"updated": "2026-10-23"`. A part can have `"for"` (who it is for) and `"about"`.
-3. To add a new part, add another `{ "name": ..., "chapters": [...] }` block to `parts`.
-4. Commit and push. Check it at http://localhost:4321/handbook.html first if you like.
-5. Which chapters a reader has finished is remembered only in their own browser.
-
 ## Preview the site locally
 
 Run `node serve.js` and open http://localhost:4321. The **stories** tab only appears
@@ -73,8 +58,6 @@ when the site runs on your own computer.
 - `index.html`, `blog.html`, `post.html`, `stories.html`, `write.html` and their `.js`
   files: the pages
 - `styles.css`: the look
-- `handbook.html`, `handbook.js`, `handbook.css`: the handbook page
-- `handbook/`: the handbook chapters (`*.md`) and their list, `index.json`
 - `site.js`: the status bar, theme, markdown and helpers shared by every page
 - `owner.js`, `blocks.js`: the tools behind the stories and writing pages
 - `feed.xml`: the RSS feed
