@@ -6,6 +6,7 @@
     var gm = document.getElementById("gate-msg"), gt = document.getElementById("gate");
     if (gm) gm.textContent = "The editor couldn't load all its parts. Reload the page.";
     if (gt) gt.hidden = false;
+    document.body.classList.remove("editing");   // the page starts with the writing bars; the message needs the normal site bar
     return;
   }
   var $ = RP.$, el = RP.el, store = RP.store;
@@ -13,6 +14,7 @@
   if (!RP.isOwner) {
     if (location.protocol === "file:") $("gate-msg").textContent = "Run node serve.js and open http://localhost:4321/stories.html";
     $("gate").hidden = false;
+    document.body.classList.remove("editing");
     return;
   }
   $("app").hidden = false;
@@ -24,6 +26,8 @@
   var DRAFT = { id: null, existed: false, editSlug: null, postId: "", editDate: null, partial: false, partialSlug: null, partialId: "", partialDate: null, fromSlug: null };
   var NOTES = {}, noteSeq = 0, openNoteId = null, noteNew = false, noteStep = null;
   var goal = 800, curFig = null, target = null, view = "write";
+  var photoSpot = null, lastSpot = null, focusMode = false, outlineOpen = false, outlineSig = null;   // photoSpot: where a photo from the toolbar goes; lastSpot: the last story line the cursor was on
+  var REDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   var S = { displayTitle: "", displaySubtitle: "", dispTouched: false, tags: [], dropCap: false, visibility: "public", schedOn: false, schedDate: "", schedTime: "21:00", canonical: "", preview: null };
   var finished = false, publishing = false, loading = true, dirty = false, saveT = null, urlCache = {}, picker = null;
   var MAX_IMAGE = 8 * 1024 * 1024;
@@ -31,7 +35,16 @@
   var NOT_CHROME = "Publishing needs Chrome or Edge on your computer, because it saves into your rumi-pulp folder. Your story is safe in this browser as a draft.";
 
   function num(n) { return Number(n).toLocaleString("en-US"); }
-  function wmsg(t) { $("wr-msg").textContent = t; }
+  var msgT = null;
+  // A line above the status strip. Its text is cleared by itself after a few seconds (longer for longer messages).
+  function wmsg(t) {
+    var m = $("wr-msg");
+    m.textContent = t;
+    clearTimeout(msgT);
+    if (t) msgT = setTimeout(function () { m.textContent = ""; }, Math.max(6000, String(t).length * 80));
+  }
+  // The save indicator: full text in the top bar, a short copy in the status strip (shown on phones only).
+  function setSaved(long, short) { $("wr-saved").textContent = long; $("wr-saved-s").textContent = short; }
   function timeText(d) { return new Date(d).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
   function fit(t) { t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }
   function fitAll() { fit($("wr-title")); fit($("wr-sub")); }
@@ -65,10 +78,18 @@
     $("wr-chars").textContent = num(txt.length) + " characters";
     $("wr-read").textContent = RP.readTime(w) + " min read";
     $("wr-goal").textContent = "Goal: " + num(w) + " / " + num(goal) + " words" + (w >= goal ? " (reached)" : "");
+    var pct = Math.min(100, Math.round(w / goal * 100));
+    $("wr-meter-i").style.width = pct + "%";
+    $("wr-meter").setAttribute("aria-valuenow", String(pct));
+    updateName();
+    buildOutline();
     return w;
   }
+  // The draft's name in the top bar follows the title.
+  function updateName() { $("wr-name").textContent = $("wr-title").value.trim() || "Untitled draft"; }
   $("goal-btn").addEventListener("click", function () {
-    $("goal-btn").hidden = true; $("goal-form").hidden = false; $("goal-in").value = goal; $("goal-in").focus(); $("goal-in").select();
+    $("goal-btn").hidden = true; $("goal-form").hidden = false; $("ed-status").classList.add("goal-open");
+    $("goal-in").value = goal; $("goal-in").focus(); $("goal-in").select();
   });
   function closeGoal(save) {
     if (save) {
@@ -76,7 +97,7 @@
       if (!raw || !Number.isInteger(n) || n < 1 || n > 100000) { wmsg("Enter a whole number from 1 to 100,000"); $("goal-in").focus(); return; }
       goal = n; count(); wmsg("Goal set to " + num(goal) + " words."); touched();
     }
-    $("goal-form").hidden = true; $("goal-btn").hidden = false; $("goal-btn").focus();
+    $("goal-form").hidden = true; $("goal-btn").hidden = false; $("ed-status").classList.remove("goal-open"); $("goal-btn").focus();
   }
   $("goal-set").addEventListener("click", function () { closeGoal(true); });
   $("goal-cancel").addEventListener("click", function () { closeGoal(false); });
@@ -129,7 +150,7 @@
     RPO.drafts();
     if (RPO.draftsBroken) {   // the saved drafts could not be read: nothing is written over them
       dirty = true;
-      $("wr-saved").textContent = "Not saved";
+      setSaved("Not saved", "Not saved");
       wmsg(RPO.BROKEN_MSG);
       return;
     }
@@ -139,14 +160,15 @@
       try { history.replaceState(null, "", "write.html?draft=" + encodeURIComponent(DRAFT.id) + location.hash); } catch (e) {}
     }
     dirty = !ok;
-    $("wr-saved").textContent = ok ? "Saved draft · " + timeText(Date.now()) : "This draft couldn't be saved. Copy your text somewhere safe.";
+    setSaved(ok ? "Saved draft · " + timeText(Date.now()) : "This draft couldn't be saved. Copy your text somewhere safe.", ok ? "Saved" : "Not saved");
     if (!ok) wmsg("This draft couldn't be saved: your browser's storage is full or blocked. Copy your text somewhere safe.");
     else if (loud) wmsg("Draft saved.");
   }
   function touched() {
+    updateName();
     if (loading || finished) return;
     dirty = true;
-    $("wr-saved").textContent = "Saving…";
+    setSaved("Saving…", "Saving…");
     clearTimeout(saveT);
     renderMarks();
     saveT = setTimeout(function () { persist(false); }, 1200);
@@ -310,13 +332,7 @@
   function sameSnap(a, b) {
     return a.html === b.html && a.title === b.title && a.subtitle === b.subtitle && a.notes === b.notes && a.field === b.field && a.ck === b.ck && a.ts === b.ts && a.te === b.te;
   }
-  function updateUndo() {
-    [["b-undo", undoStack], ["b-redo", redoStack]].forEach(function (x) {
-      var b = $(x[0]), off = !x[1].length;
-      b.disabled = off; b.setAttribute("aria-disabled", String(off));
-    });
-  }
-  function resetUndo() { undoStack.length = 0; redoStack.length = 0; typing.active = false; updateUndo(); }
+  function resetUndo() { undoStack.length = 0; redoStack.length = 0; typing.active = false; }
   // Records the story as it is now, before a change. Returns the snapshot, or null when nothing was recorded.
   function pushUndo(spaceAt) {
     if (loading || batch) return null;
@@ -325,7 +341,6 @@
     var sn = takeSnap(spaceAt), top = undoStack[undoStack.length - 1];
     if (top && sameSnap(top, sn)) sn = null;
     else { undoStack.push(sn); if (undoStack.length > MAX_UNDO) undoStack.shift(); }
-    updateUndo();
     return sn;
   }
   // Records a snapshot, then runs a change that goes through the browser's editing commands (whose own events must not record more).
@@ -384,7 +399,6 @@
     finally {
       var now = sn || cur;   // a side that holds only invisible steps counts as empty
       [undoStack, redoStack].forEach(function (st) { if (!st.some(function (x) { return !visSame(x, now); })) st.length = 0; });
-      updateUndo();
     }
   }
   function undo() { step(undoStack, redoStack); }
@@ -425,9 +439,6 @@
     var own = fieldEl(typing.field), s = window.getSelection();
     if (own) typing.off = own.selectionStart; else { typing.node = s.anchorNode; typing.off = s.anchorOffset; }
   }
-  ["b-undo", "b-redo"].forEach(function (id) { $(id).addEventListener("mousedown", function (e) { e.preventDefault(); }); });
-  $("b-undo").addEventListener("click", undo);
-  $("b-redo").addEventListener("click", redo);
   body.addEventListener("beforeinput", function (e) { onBeforeInput(e, "body"); });
 
   // Chrome can put a new list inside the paragraph it came from; lift it out so lists sit directly in the story.
@@ -591,9 +602,20 @@
     if (focusFirst) insButtons()[0].focus({ preventScroll: true });
   }
   function closeInserter(returnFocus) {
+    var spot = photoSpot;
+    photoSpot = null; photos.classList.remove("by-toolbar");
     ins.classList.remove("open"); plus.setAttribute("aria-expanded", "false"); photos.hidden = true; setInsTab(-1);
     if (searchCtl) { searchCtl.abort(); searchCtl = null; }
-    if (returnFocus) { body.focus({ preventScroll: true }); if (target && target.parentNode) placeCaret(target); }
+    if (returnFocus) {
+      body.focus({ preventScroll: true });
+      if (spot) backToStory(spot.blk);
+      else if (target && target.parentNode) placeCaret(target);
+    }
+  }
+  // Puts the cursor back at the end of the story line it was on (used when something added from the toolbar is cancelled).
+  function backToStory(blk) {
+    body.focus({ preventScroll: true });
+    if (blk && blk.parentNode === body && !isBlockNode(blk)) placeCaretEnd(blk);
   }
   function hideInserter() {
     plus.hidden = true; closeInserter(false); target = null;
@@ -614,6 +636,7 @@
   }
   function updatePlus() {
     if (view !== "write" || loading) return;   // not while the story is still being opened
+    if (photoSpot && !photos.hidden) return;    // the photo box opened from the toolbar stays where it is
     ensureTrailing();
     var s = window.getSelection(), b = s.rangeCount && body.contains(s.anchorNode) ? curBlock() : null;
     var last = body.lastElementChild, trail = isEmptyPara(last) ? last : null, t, idle = false;
@@ -652,11 +675,25 @@
     e.preventDefault(); setInsTab(n); bs[n].focus({ preventScroll: true });
   });
 
-  // Puts a new block just above the empty line the "+" belongs to.
+  // Puts a new block just above the empty line the "+" belongs to. From the toolbar, tgt is { bar: true, blk } instead:
+  // the block goes below the story line the cursor was on, above the empty line that follows it (made if there is none).
+  function lineAfter(blk) {
+    if (!blk || blk.parentNode !== body) { ensureTrailing(); return body.lastElementChild; }
+    if (isEmptyPara(blk)) return blk;
+    var nx = blk.nextElementSibling;
+    if (isEmptyPara(nx)) return nx;
+    var p = RPB.para("");
+    body.insertBefore(p, blk.nextSibling);
+    return p;
+  }
   function commitBlock(node, kind, message, tgt) {
-    tgt = tgt && tgt.parentNode === body ? tgt : target;
-    if (!tgt || !tgt.parentNode) return;
+    var viaBar = !!(tgt && tgt.bar);
+    if (!viaBar) {
+      tgt = tgt && tgt.parentNode === body ? tgt : target;
+      if (!tgt || !tgt.parentNode) return;
+    }
     pushUndo();
+    if (viaBar) tgt = lineAfter(tgt.blk);   // after the snapshot, so one Undo takes the new line away with the block
     body.insertBefore(node, tgt);
     closeInserter(false);
     body.focus({ preventScroll: true });
@@ -794,42 +831,51 @@
     if (typeof dl === "string" && /^https:\/\/api\.unsplash\.com\//.test(dl)) {
       fetch(dl, { headers: { Authorization: "Client-ID " + unsplashKey() } }).catch(function () {});
     }
-    commitBlock(f, "photo", "Photo added. Click it to change its size or description.");
+    commitBlock(f, "photo", "Photo added. Click it to change its size or description.", photoSpot);
   }
 
-  ins.addEventListener("click", function (e) {
-    var b = e.target.closest("button[data-ins]");
-    if (!b || !target || !target.parentNode) return;
-    var kind = b.getAttribute("data-ins"), tgt = target;
-    if (kind === "photos") { photos.hidden = false; buildPhotos(); return; }
+  // Adds something to the story. ctx is { tgt, anchor } for the "+" menu or { bar: true, blk, anchor } for the toolbar.
+  function runInsert(kind, ctx) {
+    var bar = !!ctx.bar, tgt = bar ? { bar: true, blk: ctx.blk } : ctx.tgt;
+    function cancelled() { if (bar) { closeInserter(false); backToStory(ctx.blk); } else closeInserter(true); }
+    if (kind === "photos") {
+      if (bar) { closeInserter(false); photoSpot = tgt; photos.classList.add("by-toolbar"); }
+      photos.hidden = false; buildPhotos();
+      return;
+    }
     if (kind === "image") {
       pickFile(function (file) {
         addImage(file).then(function (r) {
-          if (!r) { closeInserter(true); return; }
+          if (!r) { cancelled(); return; }
           commitBlock(figureOf({ name: r.name }), kind, "Image added. Click it to change its size or add a description.", tgt);
         });
       });
     }
     else if (kind === "video") {
       RPO.askLink({
-        title: "Add a video", help: "Paste a YouTube or Vimeo link.", anchor: plus,
+        title: "Add a video", help: "Paste a YouTube or Vimeo link.", anchor: ctx.anchor,
         validate: function (u) { return RP.parseVideo(u) ? null : "That doesn't look like a YouTube or Vimeo link."; }
       }).then(function (u) {
-        if (u === null) { closeInserter(true); return; }
+        if (u === null) { cancelled(); return; }
         commitBlock(RPB.videoCard(RP.parseVideo(u)), kind, "Video added. It plays on the published page.", tgt);
       });
     }
-    else if (kind === "part") commitBlock(RPB.stars(), kind, "New part added.");
-    else if (kind === "code") commitBlock(RPB.codeBlock(""), kind, "Code block added.");
+    else if (kind === "part") commitBlock(RPB.stars(), kind, "New part added.", tgt);
+    else if (kind === "code") commitBlock(RPB.codeBlock(""), kind, "Code block added.", tgt);
     else if (kind === "embed") {
       RPO.askLink({
-        title: "Add an embed", help: "Paste a link. It is shown as a link card.", anchor: plus,
+        title: "Add an embed", help: "Paste a link. It is shown as a link card.", anchor: ctx.anchor,
         validate: function (u) { return RPB.URL_RE.test(u) && RPB.linkCard(u) ? null : "Links must start with http:// or https://."; }
       }).then(function (u) {
-        if (u === null) { closeInserter(true); return; }
+        if (u === null) { cancelled(); return; }
         commitBlock(RPB.linkCard(u), kind, "Link added.", tgt);
       });
     }
+  }
+  ins.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-ins]");
+    if (!b || !target || !target.parentNode) return;
+    runInsert(b.getAttribute("data-ins"), { tgt: target, anchor: plus });
   });
 
   /* ═════════ formatting (selection bar, shortcuts, typing shortcuts) ═════════ */
@@ -891,7 +937,7 @@
     else if (cmd === "h2" || cmd === "h3" || cmd === "quote") edit(function () { toggleBlock(cmd === "quote" ? "blockquote" : cmd); });
     else if (cmd === "link") linkCmd();
     else if (cmd === "note") noteCmd();
-    afterEdit(); updateBar();
+    afterEdit(); updateBar(); updateToolbar();
   }
 
   /* ── private notes (only the writer sees them; never part of the published text) ── */
@@ -952,7 +998,7 @@
       NOTES[id] = t; wmsg("Private note saved. Only you can see it, and it is never published.");
     } else if (mode === "delete" || (mode === "cancel" && noteNew)) {
       if (mode === "delete") pushUndo();
-      else if (noteStep && undoStack[undoStack.length - 1] === noteStep) { undoStack.pop(); updateUndo(); }   // the note was never made: forget the step
+      else if (noteStep && undoStack[undoStack.length - 1] === noteStep) { undoStack.pop(); }   // the note was never made: forget the step
       unwrapNote(id); delete NOTES[id];
       if (mode === "delete") wmsg("Private note deleted.");
     }
@@ -974,7 +1020,7 @@
   function renderMarks() {
     if (view !== "write") return;
     marks.textContent = "";
-    var wrap = $("wr-wrap").getBoundingClientRect(), wide = window.innerWidth >= 900, n = 0;
+    var wrap = $("wr-wrap").getBoundingClientRect(), wide = document.documentElement.clientWidth - wrap.right >= 40, n = 0;
     var seen = {};
     qsa(body, ".mk-note").forEach(function (s) {
       var id = s.getAttribute("data-note-id");
@@ -1001,6 +1047,7 @@
 
   /* ── selection bar ── */
   function hideBar() { selBar.hidden = true; }
+  function topEdge() { return view === "write" ? 92 : 8; }   // floating bars stay below the top bar and the toolbar
   function updateBar() {
     if (view !== "write") { hideBar(); return; }
     var r = selRange();
@@ -1010,9 +1057,9 @@
     if (rect.bottom < 0 || rect.top > window.innerHeight) { hideBar(); return; }
     selBar.style.left = "8px"; selBar.style.top = "0px"; selBar.hidden = false;
     var w = selBar.offsetWidth, h = selBar.offsetHeight;
-    var below = false, top = rect.top - h - 10;
-    if (top < 8) { top = rect.bottom + 10; below = true; }
-    top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
+    var below = false, top = rect.top - h - 10, edge = topEdge();
+    if (top < edge) { top = rect.bottom + 10; below = true; }
+    top = Math.max(edge, Math.min(top, window.innerHeight - h - 8));
     var left = Math.max(8, Math.min(rect.left + rect.width / 2 - w / 2, window.innerWidth - w - 8));
     selBar.style.top = top + "px"; selBar.style.left = left + "px";
     selBar.classList.toggle("below", below);
@@ -1026,7 +1073,7 @@
       var c = b.getAttribute("data-cmd"); if (c in st) pressed(b, st[c]);
     });
   }
-  document.addEventListener("selectionchange", function () { dropTempLines(); updateBar(); updatePlus(); });
+  document.addEventListener("selectionchange", function () { dropTempLines(); updateBar(); updatePlus(); trackSpot(); updateToolbar(); });
   window.addEventListener("scroll", function () { if (view === "write") updateBar(); if (!imgBar.hidden) placeImgBar(); if (openNoteId !== null) placeNotePop(); }, { passive: true });
   window.addEventListener("resize", function () { if (view !== "write") return; fitAll(); updatePlus(); if (!selBar.hidden) updateBar(); if (!imgBar.hidden) placeImgBar(); });
   selBar.addEventListener("mousedown", function (e) { e.preventDefault(); });
@@ -1218,8 +1265,8 @@
     imgBar.style.visibility = "";
     imgBar.style.left = "8px"; imgBar.style.top = "0px";
     var w = imgBar.offsetWidth, h = imgBar.offsetHeight;
-    var top = rect.top - h - 8; if (top < 8) top = Math.min(rect.top + 8, window.innerHeight - h - 8);
-    top = Math.max(8, Math.min(top, window.innerHeight - h - 8));
+    var edge = topEdge(), top = rect.top - h - 8; if (top < edge) top = Math.min(rect.top + 8, window.innerHeight - h - 8);
+    top = Math.max(edge, Math.min(top, window.innerHeight - h - 8));
     var left = Math.max(8, Math.min(rect.left + rect.width / 2 - w / 2, window.innerWidth - w - 8));
     imgBar.style.top = top + "px"; imgBar.style.left = left + "px";
   }
@@ -1281,6 +1328,128 @@
   });
   $("img-alt").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); hideImgBar(true); } });
 
+  /* ═════════ the bars around the page: toolbar, outline, status strip, calm bars ═════════ */
+  var tools = $("ed-tools"), calmT = null, hintT = null;
+
+  // There is one theme button (site.js finds it by its id): it sits in whichever top bar is showing.
+  function placeThemeBtn(inEditor) {
+    var tb = $("theme-btn"), home = document.querySelector(".bar-r"), right = $("ed-right");
+    if (!tb) return;
+    if (inEditor) { if (right && tb.parentNode !== right) right.insertBefore(tb, $("wr-publish")); }
+    else if (home && tb.parentNode !== home) home.appendChild(tb);
+  }
+
+  // The toolbar does the same things as the selection bar and the "+" menu, through the same functions (runCmd and runInsert).
+  function trackSpot() {
+    var s = window.getSelection();
+    if (s.rangeCount && body.contains(s.anchorNode)) { var cb = curBlock(); if (cb) lastSpot = cb; }
+  }
+  function spotBlock() {   // the story line a toolbar action is meant for
+    trackSpot();
+    return lastSpot && lastSpot.parentNode === body ? lastSpot : null;
+  }
+  function updateToolbar() {
+    if (view !== "write") return;
+    var s = window.getSelection();
+    if (!s.rangeCount || !body.contains(s.anchorNode)) return;
+    var r = s.getRangeAt(0), st;
+    try {
+      var bv = blockValue();
+      st = { bold: document.queryCommandState("bold"), italic: document.queryCommandState("italic"), h2: bv === "h2", h3: bv === "h3", quote: bv === "blockquote", link: !!linkAt(r), note: !!noteSpan(r.commonAncestorContainer) };
+    } catch (e) { return; }
+    qsa(tools, "button[data-cmd]").forEach(function (b) { var c = b.getAttribute("data-cmd"); if (c in st) pressed(b, st[c]); });
+  }
+  function toolbarCmd(cmd) {
+    var s = window.getSelection();
+    if (!(s.rangeCount && body.contains(s.anchorNode))) {   // the cursor is in the title or subtitle: go to the last story line first
+      var spot = spotBlock();
+      body.focus({ preventScroll: true });
+      if (spot && !isBlockNode(spot)) placeCaretEnd(spot);
+      else if (body.lastElementChild) placeCaret(body.lastElementChild);
+    } else if (!body.contains(document.activeElement)) {   // focus is on a toolbar button: give it back to the story, keeping the selection
+      var rg = s.getRangeAt(0).cloneRange();
+      body.focus({ preventScroll: true });
+      s.removeAllRanges(); s.addRange(rg);
+    }
+    runCmd(cmd);
+  }
+  tools.addEventListener("mousedown", function (e) { if (e.target.closest("button")) e.preventDefault(); });   // keep the cursor in the story
+  tools.addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (!b || view !== "write") return;
+    var cmd = b.getAttribute("data-cmd"), kind = b.getAttribute("data-ins");
+    if (cmd) toolbarCmd(cmd);
+    else if (kind) runInsert(kind, { bar: true, blk: spotBlock(), anchor: b });
+  });
+  // Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl+Y) also work when the focus is on a button or nowhere in particular.
+  document.addEventListener("keydown", function (e) {
+    if (view !== "write" || e.defaultPrevented) return;
+    var t = e.target;
+    if (t && t.closest && t.closest("input, textarea, [contenteditable]")) return;
+    if (document.querySelector(".dlg-back, .dlg-pop")) return;
+    historyKey(e);
+  });
+
+  /* ── outline ── */
+  function headings() { return qsa(body, "h2, h3").filter(function (h) { return h.textContent.trim(); }); }
+  function buildOutline() {
+    var hs = headings(), sig = hs.map(function (h) { return h.nodeName + h.textContent.replace(/\s+/g, " ").trim(); }).join("|");
+    if (sig === outlineSig) return;   // nothing changed in the headings
+    outlineSig = sig;
+    var list = $("ol-list");
+    list.textContent = "";
+    hs.forEach(function (h, i) {
+      var t = h.textContent.replace(/\s+/g, " ").trim(), li = el("li"), b = el("button", "ed-ol-i " + h.nodeName.toLowerCase(), t);
+      b.type = "button"; b.title = t;
+      b.addEventListener("click", function () {
+        var now = headings()[i];
+        if (now) now.scrollIntoView({ behavior: REDUCED ? "auto" : "smooth", block: "start" });
+      });
+      li.appendChild(b); list.appendChild(li);
+    });
+    $("ol-empty").hidden = hs.length > 0;
+  }
+  function syncOutlineClass() { document.body.classList.toggle("ol-open", outlineOpen && !focusMode); }
+  function setOutline(open) {
+    outlineOpen = open;
+    $("outline").hidden = !open;
+    $("outline-btn").setAttribute("aria-expanded", String(open));
+    syncOutlineClass();
+    if (view === "write") { fitAll(); renderMarks(); updatePlus(); }
+  }
+  $("outline-btn").addEventListener("click", function () {
+    if (focusMode) setFocus(false);
+    setOutline(!outlineOpen);
+  });
+
+  /* ── calm bars and focus mode ── */
+  function setHint(t, ms) {
+    var h = $("ed-hint");
+    h.textContent = t;
+    clearTimeout(hintT);
+    if (t) hintT = setTimeout(function () { h.textContent = ""; }, ms || 4000);
+  }
+  setHint("Esc for focus mode", 9000);
+  function restoreCalm() { clearTimeout(calmT); calmT = null; document.body.classList.remove("calm"); }
+  function typingCalm() {   // after 1.5 seconds of typing the bars fade; moving the mouse or clicking brings them back
+    if (calmT || document.body.classList.contains("calm")) return;
+    calmT = setTimeout(function () { calmT = null; document.body.classList.add("calm"); }, 1500);
+  }
+  document.addEventListener("input", function (e) {
+    var t = e.target;
+    if (view === "write" && (t === body || t === $("wr-title") || t === $("wr-sub"))) typingCalm();
+  });
+  document.addEventListener("mousemove", function (e) { if (e.movementX || e.movementY) restoreCalm(); });
+  document.addEventListener("click", restoreCalm);
+  ["ed-top", "ed-tools", "ed-status"].forEach(function (id) { $(id).addEventListener("focusin", restoreCalm); });
+  function setFocus(on) {
+    focusMode = on;
+    document.body.classList.toggle("focus-mode", on);
+    syncOutlineClass();
+    setHint(on ? "Focus mode on. Press Esc to leave it." : "Focus mode off.", 3000);
+    if (view === "write") { fitAll(); renderMarks(); updatePlus(); }
+  }
+
   /* ═════════ leaving things with Escape ═════════ */
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape" || view !== "write") return;
@@ -1291,10 +1460,13 @@
       });
       return;
     }
-    if (!$("goal-form").hidden) { closeGoal(false); return; }
+    if (!$("goal-form").hidden || document.activeElement === $("goal-in")) { e.preventDefault(); if (!$("goal-form").hidden) closeGoal(false); return; }
     if (!imgBar.hidden) { hideImgBar(true); return; }
     if (!selBar.hidden) { hideBar(); body.focus({ preventScroll: true }); var s = window.getSelection(); if (s.rangeCount && body.contains(s.anchorNode)) s.collapseToEnd(); return; }
     if (insOpen() || !photos.hidden) { closeInserter(true); return; }
+    if (document.querySelector(".dlg-back, .dlg-pop")) return;   // a link box or question box is open: it handles Escape itself
+    e.preventDefault();
+    setFocus(!focusMode);
   });
 
   /* ═════════ publish screen ═════════ */
@@ -1581,9 +1753,11 @@
     view = h;
     $("view-write").hidden = h !== "write";
     $("view-publish").hidden = h !== "publish";
+    document.body.classList.toggle("editing", h === "write");   // the writing page has its own bars; the publish page keeps the site bar
+    placeThemeBtn(h === "write");
     hideBar(); hideInserter();
     if (h !== "write") { hideImgBar(false); if (openNoteId !== null) closeNote("cancel"); }
-    if (h === "write") { fitAll(); count(); renderMarks(); updatePlus(); document.title = "Write a story — rumi-pulp"; }
+    if (h === "write") { fitAll(); count(); renderMarks(); updatePlus(); restoreCalm(); document.title = "Write a story — rumi-pulp"; }
     if (h === "publish") { persist(false); enterPublish(); document.title = "Publish — rumi-pulp"; }
     if (changed) {
       window.scrollTo(0, 0);
@@ -1609,7 +1783,8 @@
     ensureTrailing();
     count();
     loading = false;
-    $("wr-saved").textContent = DRAFT.existed ? "Opened draft" : "Not saved yet";
+    setSaved(DRAFT.existed ? "Opened draft" : "Not saved yet", DRAFT.existed ? "Opened draft" : "Not saved yet");
+    setOutline(window.innerWidth >= 1100);
     route();
     if (view === "write" && !$("wr-title").value && !body.querySelector("figure, p:not(:last-child)")) $("wr-title").focus({ preventScroll: true });
   })();

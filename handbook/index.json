@@ -1,0 +1,15 @@
+{
+  "title": "Handbook",
+  "subtitle": "Notes and guides, collected in one place",
+  "intro": "",
+  "parts": [
+    {
+      "name": "Getting started",
+      "for": "Start here if you are brand new.",
+      "about": "How this handbook works, and how to add to it.",
+      "chapters": [
+        { "slug": "welcome", "title": "Welcome", "minutes": 2, "updated": "2026-10-23" }
+      ]
+    }
+  ]
+}

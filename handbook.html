@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Handbook — rumi-pulp</title>
+<meta name="description" content="A handbook of notes and guides by Rumi, a creative writer based in Kuala Lumpur." />
+<meta name="robots" content="index,follow" />
+<script>try{var t=localStorage.getItem("rp:theme");document.documentElement.setAttribute("data-theme",t==="light"?"light":"dark")}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="handbook.css?v=1" />
+</head>
+<body data-page="handbook">
+  <header class="bar">
+    <div class="bar-in">
+      <div class="bar-l">
+        <a class="brand" href="index.html">rumi-pulp</a>
+        <nav class="nav" aria-label="Main">
+          <a href="index.html" data-nav="home">home</a>
+          <a href="blog.html" data-nav="blog">blog</a>
+          <a href="handbook.html" data-nav="handbook">handbook</a>
+          <a href="stories.html" data-nav="stories" id="nav-stories" hidden>stories</a>
+        </nav>
+      </div>
+      <div class="bar-r">
+        <span class="bar-st"><span class="live-dot" aria-hidden="true"></span><span class="bar-w">online</span></span>
+        <span id="bar-wx">KL …</span>
+        <span id="bar-time">--:-- --</span>
+        <button type="button" id="theme-btn" aria-label="Switch to light mode"></button>
+      </div>
+    </div>
+    <div class="read-progress" aria-hidden="true" id="progress" hidden><i id="progress-i"></i></div>
+  </header>
+
+  <main>
+    <!-- loading, empty and error messages -->
+    <section id="view-msg" aria-labelledby="msg-h">
+      <h1 class="page-h" id="msg-h" tabindex="-1">Handbook</h1>
+      <p class="hb-sub" id="msg-p" role="status">Loading the handbook…</p>
+      <a class="back" id="msg-link" href="#/" hidden>← All chapters</a>
+    </section>
+
+    <!-- home -->
+    <section id="view-home" aria-labelledby="home-h" hidden>
+      <h1 class="page-h" id="home-h" tabindex="-1">Handbook</h1>
+      <p class="hb-sub" id="home-sub" hidden></p>
+      <p class="hb-intro" id="home-intro" hidden></p>
+
+      <div class="start">
+        <h2 class="sec">start here</h2>
+        <a class="btn primary big" id="start-btn" href="#/">Start with chapter 1</a>
+        <p class="start-promise" id="start-promise"></p>
+        <div class="start-prog" id="start-prog" hidden>
+          <p id="prog-t"></p>
+          <div class="pbar" aria-hidden="true"><i id="prog-i"></i></div>
+          <p class="start-act">
+            <button type="button" class="tbtn" id="reset-btn">Start over</button>
+            <span id="reset-ask" hidden>Clear what I've read? <button type="button" class="tbtn yes" id="reset-yes">Yes</button><button type="button" class="tbtn no" id="reset-no">No</button></span>
+          </p>
+        </div>
+      </div>
+
+      <div class="how">
+        <h2 class="sec">how this works</h2>
+        <ol>
+          <li>1. Pick a chapter.</li>
+          <li>2. Read it at your own pace.</li>
+          <li>3. Use Next at the bottom to keep going.</li>
+        </ol>
+      </div>
+
+      <div class="hb-find" role="search">
+        <label class="find-l" for="home-q">Looking for something? Search the handbook</label>
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><circle cx="7" cy="7" r="4.75"/><path d="M10.5 10.5L14 14"/></svg>
+          <input id="home-q" type="text" autocomplete="off" spellcheck="false" placeholder="Type a word" />
+        </div>
+      </div>
+      <div id="home-results" hidden>
+        <p class="res-count" id="home-count" role="status" aria-live="polite"></p>
+        <ul class="res" id="home-list"></ul>
+      </div>
+
+      <div id="home-main">
+        <div class="hb-sec">
+          <h2 class="sec">browse by part</h2>
+          <div class="parts" id="parts"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- chapter -->
+    <section id="view-chapter" aria-label="Chapter" hidden>
+      <div class="hb-grid">
+        <div class="hb-side" id="side">
+          <button class="side-toggle" type="button" id="side-toggle" aria-expanded="false" aria-controls="side-panel"><span>All chapters</span><span id="side-glyph" aria-hidden="true">+</span></button>
+          <div class="hb-panel" id="side-panel">
+            <div role="search">
+              <label class="sr-only" for="side-q">Search the handbook</label>
+              <div class="search">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><circle cx="7" cy="7" r="4.75"/><path d="M10.5 10.5L14 14"/></svg>
+                <input id="side-q" type="text" autocomplete="off" spellcheck="false" placeholder="Search the handbook" />
+              </div>
+            </div>
+            <div class="side-res" id="side-results" hidden>
+              <p class="res-count" id="side-count" role="status" aria-live="polite"></p>
+              <ul class="res compact" id="side-list"></ul>
+            </div>
+            <nav id="side-tree" aria-label="Handbook chapters"><div class="tree-h" aria-hidden="true">chapters</div></nav>
+          </div>
+        </div>
+
+        <article class="hb-article" id="ch-article">
+          <a class="back" href="#/">← All chapters</a>
+          <p class="ch-part" id="ch-part"></p>
+          <h1 id="ch-title" tabindex="-1"></h1>
+          <p class="orient" id="ch-orient"></p>
+          <div class="prose hb-body" id="ch-body"></div>
+          <nav class="hb-pn" id="ch-pn" aria-label="Next and previous chapter"></nav>
+        </article>
+
+        <aside class="hb-outline" aria-label="In this chapter">
+          <h2 class="sec">in this chapter</h2>
+          <div id="ch-outline"></div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <noscript><p class="hb-noscript">The handbook needs JavaScript to show its chapters.</p></noscript>
+  <script src="site.js?v=3" defer></script>
+  <script src="handbook.js?v=1" defer></script>
+</body>
+</html>

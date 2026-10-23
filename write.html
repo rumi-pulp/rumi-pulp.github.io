@@ -10,9 +10,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&display=swap" rel="stylesheet" />
-<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="styles.css?v=5" />
 </head>
-<body data-page="stories">
+<body data-page="stories" class="editing">
   <header class="bar">
     <div class="bar-in">
       <div class="bar-l">
@@ -20,6 +20,7 @@
         <nav class="nav" aria-label="Main">
           <a href="index.html" data-nav="home">home</a>
           <a href="blog.html" data-nav="blog">blog</a>
+          <a href="handbook.html" data-nav="handbook">handbook</a>
           <a href="stories.html" data-nav="stories" id="nav-stories" hidden>stories</a>
         </nav>
       </div>
@@ -45,31 +46,48 @@
     <!-- ═════════ write ═════════ -->
     <section id="view-write" aria-labelledby="write-h">
       <h1 class="sr-only" id="write-h" tabindex="-1">Write a story</h1>
-      <div class="wr-col" id="wr-col">
-        <div class="wr-top">
-          <div class="wr-tools">
-            <a href="stories.html">← Your stories</a>
-            <button class="btn small" type="button" id="b-undo" disabled aria-disabled="true">Undo</button>
-            <button class="btn small" type="button" id="b-redo" disabled aria-disabled="true">Redo</button>
+      <div class="ed-head" id="ed-head">
+        <header class="ed-top bars" id="ed-top">
+          <div class="ed-left"><a href="stories.html">← Stories</a></div>
+          <div class="ed-mid">
+            <span class="ed-name" id="wr-name">Untitled draft</span>
+            <span class="ed-save" id="wr-saved" role="status" aria-live="polite">Not saved yet</span>
           </div>
-          <div class="wr-meta">
-            <span id="wr-saved">Not saved yet</span>
-            <span id="wr-count">0 words</span>
+          <div class="ed-right" id="ed-right">
+            <button type="button" class="ed-tb" id="outline-btn" aria-expanded="false" aria-controls="outline">outline</button>
             <button class="btn primary" type="button" id="wr-publish">Publish</button>
           </div>
+        </header>
+        <div class="ed-tools bars" id="ed-tools" role="group" aria-label="Formatting and insert">
+          <div class="ed-tools-in">
+            <button type="button" data-cmd="h2" aria-pressed="false" title="Heading" aria-label="Heading">H</button>
+            <button type="button" data-cmd="h3" aria-pressed="false" title="Subheading" aria-label="Subheading">h</button>
+            <span class="sep" aria-hidden="true"></span>
+            <button type="button" data-cmd="bold" aria-pressed="false" title="Bold (Ctrl/Cmd + B)" aria-label="Bold"><span class="g-b" aria-hidden="true">B</span></button>
+            <button type="button" data-cmd="italic" aria-pressed="false" title="Italic (Ctrl/Cmd + I)" aria-label="Italic"><span class="g-i" aria-hidden="true">i</span></button>
+            <button type="button" data-cmd="link" aria-pressed="false" title="Add a link (Ctrl/Cmd + K)" aria-label="Link">link</button>
+            <button type="button" data-cmd="quote" aria-pressed="false" title="Quote" aria-label="Quote">quote</button>
+            <span class="sep" aria-hidden="true"></span>
+            <button type="button" data-ins="image" title="Add a picture" aria-label="Image">image</button>
+            <button type="button" data-ins="photos" title="Free photos" aria-label="Free photos">photos</button>
+            <button type="button" data-ins="video" title="Add a video" aria-label="Video">video</button>
+            <button type="button" data-ins="embed" title="Embed something from another site" aria-label="Embed">embed</button>
+            <button type="button" data-ins="code" title="Code block" aria-label="Code block">code</button>
+            <button type="button" data-ins="part" title="New part (a break with three stars)" aria-label="New part">part</button>
+            <span class="sep" aria-hidden="true"></span>
+            <button type="button" data-cmd="note" aria-pressed="false" title="Private note, only you can see it" aria-label="Private note">note</button>
+          </div>
         </div>
-        <div class="wr-status">
-          <span id="wr-chars">0 characters</span>
-          <span id="wr-read">1 min read</span>
-          <span><span id="wr-goal">Goal: 0 / 800 words</span> <button class="text-btn" type="button" id="goal-btn" style="margin:0">Set goal</button></span>
-          <span class="goal-form" id="goal-form" hidden>
-            <label class="sr-only" for="goal-in">Word goal</label>
-            <input class="field" id="goal-in" type="number" min="1" max="100000" inputmode="numeric" />
-            <button class="btn small" type="button" id="goal-set">Set</button>
-            <button class="btn small" type="button" id="goal-cancel">Cancel</button>
-          </span>
-        </div>
+      </div>
 
+      <div class="ed-work">
+        <aside class="ed-outline" id="outline" aria-label="Outline" hidden>
+          <h2>outline</h2>
+          <ul class="ed-ol-list" id="ol-list"></ul>
+          <p class="ed-ol-empty" id="ol-empty" hidden>Headings you add will show up here.</p>
+        </aside>
+        <div class="ed-main">
+      <div class="wr-col" id="wr-col">
         <div class="wr">
           <textarea class="wr-title" id="wr-title" rows="1" placeholder="Title" aria-label="Title"></textarea>
           <textarea class="wr-sub" id="wr-sub" rows="1" placeholder="Add a subtitle…" aria-label="Subtitle"></textarea>
@@ -89,9 +107,27 @@
             <div class="prose wr-body" id="wr-body" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Story text" spellcheck="true"></div>
             <div class="note-marks" id="note-marks"></div>
           </div>
-          <div class="msg" id="wr-msg" role="status" aria-live="polite"></div>
         </div>
       </div>
+        </div>
+      </div>
+
+      <footer class="ed-status bars" id="ed-status" aria-label="Writing status">
+        <span class="ed-st-l"><span id="wr-count">0 words</span><span class="ed-hide"> · <span id="wr-chars">0 characters</span> · <span id="wr-read">1 min read</span></span><span class="ed-save-s"> · <span id="wr-saved-s">Not saved yet</span></span></span>
+        <span class="ed-st-m" id="ed-hint" role="status" aria-live="polite">Esc for focus mode</span>
+        <span class="ed-st-r">
+          <span id="wr-goal">Goal: 0 / 800 words</span>
+          <span class="ed-meter" id="wr-meter" role="progressbar" aria-label="Progress towards your word goal" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="wr-meter-i"></i></span>
+          <button class="ed-link" type="button" id="goal-btn">Set goal</button>
+          <span class="goal-form" id="goal-form" hidden>
+            <label class="sr-only" for="goal-in">Word goal</label>
+            <input id="goal-in" type="number" min="1" max="100000" inputmode="numeric" />
+            <button type="button" id="goal-set">Set</button>
+            <button type="button" id="goal-cancel">Cancel</button>
+          </span>
+        </span>
+      </footer>
+      <div class="ed-msg" id="wr-msg" role="status" aria-live="polite"></div>
 
       <div class="sel-bar" id="sel-bar" role="toolbar" aria-label="Text formatting" hidden>
         <div class="sb-in">
@@ -208,9 +244,9 @@
     </div>
   </main>
 
-  <script src="site.js?v=4" defer></script>
-  <script src="owner.js?v=4" defer></script>
-  <script src="blocks.js?v=4" defer></script>
-  <script src="write.js?v=4" defer></script>
+  <script src="site.js?v=5" defer></script>
+  <script src="owner.js?v=5" defer></script>
+  <script src="blocks.js?v=5" defer></script>
+  <script src="write.js?v=5" defer></script>
 </body>
 </html>
