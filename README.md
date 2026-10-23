@@ -61,4 +61,3 @@ when the site runs on your own computer.
 - `site.js`: the status bar, theme, markdown and helpers shared by every page
 - `owner.js`, `blocks.js`: the tools behind the stories and writing pages
 - `feed.xml`: the RSS feed
-- `assets/`: images and icons
